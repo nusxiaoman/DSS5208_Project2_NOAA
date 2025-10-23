@@ -132,29 +132,36 @@ gcloud dataproc batches list --region=asia-southeast1 --limit=5
 
 ### Step 2: Process Full Dataset
 
-Once test succeeds, process the complete 50GB dataset:
+Once test validates the parsing logic, process the complete dataset (130M rows, ~50GB CSV):
 
 ```powershell
-# Upload full script (modify noaa_cleanup_test.py: change sample fraction from 0.01 to 1.0)
-# Or create a new script without sampling
-
+# Upload optimized full script
 gsutil cp noaa_cleanup_full.py gs://weather-ml-bucket-1760514177/scripts/
 
-# Run full cleanup
+# Run full cleanup (using Spark defaults - simpler and reliable)
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 gcloud dataproc batches submit pyspark `
     gs://weather-ml-bucket-1760514177/scripts/noaa_cleanup_full.py `
     --region=asia-southeast1 `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
-    --properties=spark.sql.shuffle.partitions=200,spark.default.parallelism=200 `
     --batch=cleanup-full-$timestamp
 ```
 
+**Note**: If you need to tune Spark properties, use proper syntax:
+```powershell
+# With custom properties (optional)
+--properties="spark.sql.shuffle.partitions=200,spark.default.parallelism=200"
+```
+⚠️ Always use **quotes** around properties and **comma separation** (no spaces).
+
 **Expected Output:**
-- Processing time: 30-60 minutes (depends on cluster size)
-- Output location: `gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_std/`
-- Partitioned by: `year=2024/month=1/`, `year=2024/month=2/`, etc.
+- **Processing time**: 30-45 minutes
+- **Input rows**: ~130,222,106 (full dataset)
+- **Output rows**: ~125M (95-97% retention after filtering)
+- **Output location**: `gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_std/`
+- **Partitioned by**: `year=2024/month=1/`, `year=2024/month=2/`, etc.
+- **Format**: Compressed Parquet (~10-20GB)
 
 ### Step 3: Verify Cleaned Data
 
@@ -226,9 +233,10 @@ root
 After cleanup, expect the following characteristics:
 
 ### Data Volume
-- **Input**: ~50GB CSV, millions of observations
-- **Output**: Compressed Parquet, partitioned by year/month
-- **Sample rate**: Test uses 1%, full uses 100%
+- **Input**: ~130M rows, ~50GB CSV
+- **Output**: ~125M rows (95-97% retention), compressed Parquet (~10-20GB)
+- **Partitions**: By year and month for efficient access
+- **Test mode**: 1% sample (~1.3M rows) for validation
 
 ### Feature Ranges
 - **Temperature**: -90°C to +60°C
@@ -239,12 +247,12 @@ After cleanup, expect the following characteristics:
 - **Precipitation**: 0 to 999 mm
 
 ### Missing Value Rates (Typical)
-- Temperature: 0% (filtered out)
-- Dew Point: ~5-10%
-- Sea Level Pressure: ~10-15%
-- Visibility: ~20-30%
-- Wind Speed: ~5-10%
-- Precipitation: ~30-40% (treated as 0)
+- **Temperature**: 0% (filtered out - required for target)
+- **Dew Point**: ~15% (typical for stations)
+- **Sea Level Pressure**: ~59% (many stations don't report SLP)
+- **Visibility**: ~33% (common for this measurement)
+- **Wind Speed**: ~10-15%
+- **Precipitation**: ~30-40% (treated as 0 when missing)
 
 ## Troubleshooting
 
@@ -256,35 +264,47 @@ Solution: Verify input path exists
 gsutil ls gs://weather-ml-bucket-1760514177/data/csv/
 ```
 
-**Issue 2: "Insufficient resources" error**
+**Issue 2: Properties syntax error**
 ```
-Solution: Reduce sample size or increase cluster resources
-Add properties: --properties=spark.executor.memory=4g,spark.driver.memory=4g
+Error: "spark.sql.shuffle.partitions should be int, but was..."
+Solution: Use proper syntax with quotes and commas:
+--properties="spark.sql.shuffle.partitions=200,spark.default.parallelism=200"
+NOT: --properties=spark.sql.shuffle.partitions=200,spark.default.parallelism=200
 ```
 
-**Issue 3: Job stuck in PENDING**
+**Issue 3: "Insufficient resources" error**
+```
+Solution: Let Spark use defaults (remove --properties flag) or increase resources:
+--properties="spark.executor.memory=8g,spark.driver.memory=8g"
+```
+
+**Issue 4: Job stuck in PENDING**
 ```
 Solution: Check Dataproc quotas and subnet configuration
 gcloud compute networks subnets describe default --region=asia-southeast1
 ```
 
-**Issue 4: High null rate in output**
+**Issue 5: Slow performance on missing value counts**
 ```
-Solution: Review quality code filtering in parse functions
-May need to accept quality codes other than '1'
+Solution: The optimized script uses single-pass aggregations instead of per-column 
+filtering. If using the test script and it's slow, this is expected - the full 
+optimized version is much faster.
 ```
 
 ### Performance Tuning
 
-For large datasets, adjust Spark properties:
+For large datasets (if defaults aren't sufficient), adjust Spark properties:
 
 ```powershell
---properties=spark.sql.shuffle.partitions=400,`
-  spark.default.parallelism=400,`
-  spark.executor.memory=8g,`
-  spark.driver.memory=8g,`
-  spark.executor.cores=4
+# Proper syntax for Spark properties in PowerShell
+--properties="spark.sql.shuffle.partitions=400,spark.default.parallelism=400,spark.executor.memory=8g,spark.driver.memory=8g,spark.executor.cores=4"
 ```
+
+**Important Notes:**
+- Always use **double quotes** around the entire properties string
+- Separate properties with **commas only** (no spaces after commas)
+- Default TTL is 4 hours (14400s) - usually sufficient
+- The optimized script uses single-pass aggregations for better performance
 
 ## Next Steps
 
