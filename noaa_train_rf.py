@@ -145,33 +145,29 @@ baseline_rmse = (
 print(f"Baseline RMSE (predict-mean) ≈ {baseline_rmse:.4f}")
 
 
-# -------------------- Model & search space --------------------
-rf = RandomForestRegressor(featuresCol="features", labelCol=LABEL_COL, seed=SEED)
+# --------------------- Model & grid ---------------------
+rf = RandomForestRegressor(featuresCol="features", labelCol="label", seed=42)
 
 if STRATEGY == "cv-full":
     ntrees = [100, 200]
     depth  = [12, 16]
-    mtry_frac = [0.5, 0.7]      # as fractions; we’ll convert to Spark strings below
+    mtry   = ["sqrt", "log2"]
 elif STRATEGY == "cv-fast":
     ntrees = [100, 150]
-    depth  = [12, 15]
-    mtry_frac = [0.7]
+    depth  = [10, 12]
+    mtry   = ["sqrt"]
 else:
     ntrees = [120]
-    depth  = [14]
-    mtry_frac = [0.7]
+    depth  = [12]
+    mtry   = ["sqrt"]
 
-# Convert fractions to Spark's expected strings, e.g., "70%"
-mtry = [f"{int(x * 100)}%" for x in mtry_frac]
+param_grid = (ParamGridBuilder()
+              .addGrid(rf.numTrees, ntrees)
+              .addGrid(rf.maxDepth, depth)
+              .addGrid(rf.featureSubsetStrategy, mtry)
+              .build())
 
-# ✅ Proper ParamGrid
-param_grid = (
-    ParamGridBuilder()
-    .addGrid(rf.numTrees, ntrees)
-    .addGrid(rf.maxDepth, depth)
-    .addGrid(rf.featureSubsetStrategy, mtry)
-    .build()
-)
+
 
 evaluator = RegressionEvaluator(labelCol=LABEL_COL, predictionCol="prediction", metricName="rmse")
 pipe = Pipeline(stages=[imputer] + indexers + [encoder] + [assembler, rf])
