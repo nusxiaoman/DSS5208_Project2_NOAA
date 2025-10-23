@@ -56,7 +56,12 @@ if REPART_N > 0:
     df = df.repartition(REPART_N)
 
 # ---- Features (same as before) ----
-num_candidates = [c for c in ["WS_num","DEW_num","SLP_num","VIS_num","RH_num"] if c in df.columns]
+# Replace your current num_candidates block with this richer set:
+num_candidates = [c for c in [
+    "TEMP_num", "DEW_num", "RH_num", "WS_num", "SLP_num", "VIS_num",
+    "LAT", "LON", "ELEVATION"
+] if c in df.columns]
+
 time_cols = []
 if "DATE" in df.columns:
     df = (df.withColumn("ts", F.to_timestamp("DATE"))
