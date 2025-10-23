@@ -107,10 +107,12 @@ train = train.persist(StorageLevel.MEMORY_AND_DISK)
 test  = test.persist(StorageLevel.MEMORY_AND_DISK)
 
 # Baseline (predict-the-mean) for quick sanity vs ~36
-mean_y = train.agg(avg(LABEL_COL)).first()[0]
+mrow = train.agg(F.avg(LABEL_COL).alias("m")).first()
+mean_y = mrow["m"]
 baseline_rmse = (
-    test.select(sqrt(avg(pow(lit(mean_y) - col(LABEL_COL), 2))).alias("rmse"))
-        .first()[0]
+    test.select(
+        F.sqrt(F.avg(F.pow(F.lit(mean_y) - F.col(LABEL_COL), 2))).alias("rmse")
+    ).first()["rmse"]
 )
 print(f"Baseline RMSE (predict-mean) ≈ {baseline_rmse:.4f}")
 
