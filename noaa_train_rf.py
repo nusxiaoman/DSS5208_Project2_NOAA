@@ -167,8 +167,6 @@ param_grid = (ParamGridBuilder()
               .addGrid(rf.featureSubsetStrategy, mtry)
               .build())
 
-
-
 evaluator = RegressionEvaluator(labelCol=LABEL_COL, predictionCol="prediction", metricName="rmse")
 pipe = Pipeline(stages=[imputer] + indexers + [encoder] + [assembler, rf])
 
