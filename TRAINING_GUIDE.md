@@ -62,10 +62,12 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
     --batch=rf-test-$timestamp `
-    -- `
+    '--' `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
     gs://weather-ml-bucket-1760514177/outputs/rf_test `
     test
+
+# Note: The '--' must be in quotes for PowerShell to pass it correctly to gcloud
 ```
 
 **Parameters**:
