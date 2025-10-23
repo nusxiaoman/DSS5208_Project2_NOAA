@@ -84,22 +84,50 @@ cat_cols = [c for c in ["COUNTRY","REPORT_TYPE"] if c in df.columns]
 idx_cols = [f"{c}_idx" for c in cat_cols]
 oh_cols  = [f"{c}_oh"  for c in cat_cols]
 
-# -------------------- Stages --------------------
-imputer   = Imputer(strategy="median", inputCols=feature_num, outputCols=[f"{c}_imp" for c in feature_num])
-indexers  = [StringIndexer(inputCol=c, outputCol=f"{c}_idx", handleInvalid="keep") for c in cat_cols]
-encoder   = OneHotEncoder(inputCols=idx_cols, outputCols=oh_cols)
+# -------------------- Stages (lean & robust) --------------------
+# Assumes: feature_num, cat_cols, spark, OUT are defined
 
-final_features = [f"{c}_imp" for c in feature_num] + oh_cols
+# 1) Numeric imputation (keep for safety even if cleanup filled most numerics)
+if not feature_num:
+    raise ValueError("No numeric features found; check your input schema before Imputer.")
 
-# Diagnostics: print & save feature order
+num_imp_cols = [f"{c}_imp" for c in feature_num]
+imputer = Imputer(strategy="median",
+                  inputCols=feature_num,
+                  outputCols=num_imp_cols)
+
+# 2) Categorical encoding
+idx_cols, oh_cols = [], []
+indexers = []
+encoder = None
+if cat_cols:
+    idx_cols = [f"{c}_idx" for c in cat_cols]
+    oh_cols  = [f"{c}_oh"  for c in cat_cols]
+    indexers = [StringIndexer(inputCol=c, outputCol=f"{c}_idx", handleInvalid="keep")
+                for c in cat_cols]
+    encoder  = OneHotEncoder(inputCols=idx_cols, outputCols=oh_cols, handleInvalid="keep")
+
+# 3) Assemble final features
+final_features = num_imp_cols + oh_cols
+if not final_features:
+    raise ValueError("After preprocessing, final_features is empty. Nothing to assemble.")
+
 print("🔎 Final feature input order (total =", len(final_features), "):")
 for i, col in enumerate(final_features):
     print(f"{i}: {col}")
+
 (spark.createDataFrame([(i, col) for i, col in enumerate(final_features)], ["index","column"])
       .coalesce(1).write.mode("overwrite").option("header", True)
       .csv(f"{OUT}/feature_list"))
 
-assembler = VectorAssembler(inputCols=final_features, outputCol="features", handleInvalid="keep")
+assembler = VectorAssembler(inputCols=final_features,
+                            outputCol="features",
+                            handleInvalid="keep")
+
+# If you assemble pipeline later:
+# stages = [imputer] + indexers + ([encoder] if encoder is not None else []) + [assembler]
+# pipe = Pipeline(stages=stages + [rf_or_gbt_estimator])
+
 
 # -------------------- Split & cache --------------------
 train, test = df.randomSplit([0.7, 0.3], seed=SEED)
