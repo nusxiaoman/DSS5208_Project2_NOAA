@@ -154,12 +154,73 @@ Split method: Random split with seed=42 for reproducibility
 
 ### 4.2 Random Forest Regressor
 
-**Configuration:**
-- Algorithm: Random Forest Regression
-- Hyperparameter Tuning: Grid Search with Cross-Validation
-- Cross-validation folds: 3
+#### 4.2.1 Test Mode (10% Sample Validation)
 
-**Hyperparameter Grid:**
+**Purpose**: Validate Random Forest pipeline and tune hyperparameters on sample data
+
+**Configuration:**
+- Sample size: 8,823,031 rows (10% of training data)
+- Algorithm: Random Forest Regression
+- Hyperparameter Tuning: Grid Search with 2-Fold Cross-Validation
+- Models tested: 4 (2 numTrees × 2 maxDepth combinations)
+
+**Hyperparameter Grid (Test Mode):**
+
+| Parameter | Values Tested | Best Value |
+|-----------|---------------|------------|
+| `numTrees` | [10, 20] | 20 |
+| `maxDepth` | [5, 10] | 10 |
+| `minInstancesPerNode` | [1] | 1 |
+
+**Training Results (Test Mode):**
+
+| Metric | Value |
+|--------|-------|
+| Training rows | 8,823,031 |
+| Training RMSE | 4.64°C |
+| Training R² | 0.8525 |
+| Training MAE | 3.41°C |
+| Best CV RMSE | 4.65°C |
+| Worst CV RMSE | 6.44°C |
+| Mean CV RMSE | 5.57°C |
+| Training time | ~35 minutes |
+
+**Performance vs Baseline:**
+- RMSE improvement: 5.56°C → 4.64°C (**16.5% better**)
+- R² improvement: 0.8017 → 0.8525 (**6.3% better**)
+
+**Feature Importances (Test Mode - Top 10):**
+
+| Rank | Feature | Importance | Interpretation |
+|------|---------|------------|----------------|
+| 1 | dew_point | 0.3819 (38.19%) | Most critical predictor |
+| 2 | latitude | 0.2671 (26.71%) | Geographic location matters |
+| 3 | month_cos | 0.1735 (17.35%) | Seasonal patterns (cyclical) |
+| 4 | month_sin | 0.0664 (6.64%) | Seasonal patterns (cyclical) |
+| 5 | longitude | 0.0373 (3.73%) | East-west variation |
+| 6 | sea_level_pressure | 0.0284 (2.84%) | Atmospheric conditions |
+| 7 | elevation | 0.0154 (1.54%) | Altitude effect |
+| 8 | hour_sin | 0.0121 (1.21%) | Diurnal cycle |
+| 9 | visibility | 0.0066 (0.66%) | Minor predictor |
+| 10 | wind_speed | 0.0046 (0.46%) | Minor predictor |
+
+**Key Insights from Test Mode:**
+- Dew point is by far the most important feature, explaining 38% of temperature variance
+- Geographic features (latitude, longitude) combined explain ~30% 
+- Seasonal patterns (month_sin/cos) explain ~24%
+- Temporal features (hour_sin/cos) have minimal impact (~1%)
+- Weather measurements (pressure, visibility, wind) contribute less than expected
+
+**Analysis**: Random Forest in test mode demonstrates significant improvement over the baseline Linear Regression model. The 16.5% reduction in RMSE (from 5.56°C to 4.64°C) shows that capturing non-linear relationships is valuable. The model identifies dew point as the dominant predictor, which makes meteorological sense as dew point and temperature are strongly correlated through atmospheric moisture content. Cross-validation results show consistency (best CV: 4.65°C), indicating the model generalizes well.
+
+#### 4.2.2 Full Mode (Production Training)
+
+**Configuration:**
+- Training rows: [To be filled after full training]
+- Algorithm: Random Forest Regression
+- Hyperparameter Tuning: Grid Search with 3-Fold Cross-Validation
+
+**Hyperparameter Grid (Full Mode):**
 
 | Parameter | Values Tested | Best Value |
 |-----------|---------------|------------|
@@ -171,7 +232,7 @@ Split method: Random split with seed=42 for reproducibility
 
 | Metric | Value |
 |--------|-------|
-| Training rows | 88,224,694 |
+| Training rows | [XX,XXX,XXX] |
 | Training RMSE | [XX.XX]°C |
 | Training R² | [0.XX] |
 | Training MAE | [XX.XX]°C |
@@ -187,7 +248,7 @@ Split method: Random split with seed=42 for reproducibility
 | Test MAE | [XX.XX]°C |
 | Test rows | 37,810,583 |
 
-**Feature Importances (Top 10):**
+**Feature Importances (Full Mode - Top 10):**
 
 | Rank | Feature | Importance |
 |------|---------|------------|
@@ -206,12 +267,65 @@ Split method: Random split with seed=42 for reproducibility
 
 ### 4.3 Gradient Boosted Trees (GBT)
 
-**Configuration:**
-- Algorithm: Gradient Boosted Trees Regression
-- Hyperparameter Tuning: Grid Search with Cross-Validation
-- Cross-validation folds: 3
+#### 4.3.1 Test Mode (10% Sample Validation)
 
-**Hyperparameter Grid:**
+**Purpose**: Validate GBT pipeline and tune hyperparameters on sample data
+
+**Configuration:**
+- Sample size: ~8,823,031 rows (10% of training data)
+- Algorithm: Gradient Boosted Trees Regression
+- Hyperparameter Tuning: Grid Search with 2-Fold Cross-Validation
+- Models tested: 4 (2 maxIter × 2 maxDepth combinations)
+
+**Hyperparameter Grid (Test Mode):**
+
+| Parameter | Values Tested | Best Value |
+|-----------|---------------|------------|
+| `maxIter` | [10, 20] | [XX] |
+| `maxDepth` | [3, 5] | [X] |
+| `stepSize` | [0.1] | 0.1 |
+
+**Training Results (Test Mode):**
+
+| Metric | Value |
+|--------|-------|
+| Training rows | [~8,823,031] |
+| Training RMSE | [XX.XX]°C |
+| Training R² | [0.XX] |
+| Training MAE | [XX.XX]°C |
+| Best CV RMSE | [XX.XX]°C |
+| Number of trees | [XX] |
+| Training time | [XX] minutes |
+
+**Performance vs Baseline & RF:**
+- vs Baseline: [XX.XX]°C → [XX.XX]°C ([XX]% improvement)
+- vs RF Test: [XX.XX]°C vs [XX.XX]°C
+
+**Feature Importances (Test Mode - Top 10):**
+
+| Rank | Feature | Importance |
+|------|---------|------------|
+| 1 | [feature_name] | [0.XXX] |
+| 2 | [feature_name] | [0.XXX] |
+| 3 | [feature_name] | [0.XXX] |
+| 4 | [feature_name] | [0.XXX] |
+| 5 | [feature_name] | [0.XXX] |
+| 6 | [feature_name] | [0.XXX] |
+| 7 | [feature_name] | [0.XXX] |
+| 8 | [feature_name] | [0.XXX] |
+| 9 | [feature_name] | [0.XXX] |
+| 10 | [feature_name] | [0.XXX] |
+
+**Analysis**: [To be filled after GBT test completes - compare with RF performance, feature importance differences, computational efficiency]
+
+#### 4.3.2 Full Mode (Production Training)
+
+**Configuration:**
+- Training rows: [To be filled]
+- Algorithm: Gradient Boosted Trees Regression  
+- Hyperparameter Tuning: Grid Search with 3-Fold Cross-Validation
+
+**Hyperparameter Grid (Full Mode):**
 
 | Parameter | Values Tested | Best Value |
 |-----------|---------------|------------|
@@ -223,7 +337,7 @@ Split method: Random split with seed=42 for reproducibility
 
 | Metric | Value |
 |--------|-------|
-| Training rows | 88,224,694 |
+| Training rows | [XX,XXX,XXX] |
 | Training RMSE | [XX.XX]°C |
 | Training R² | [0.XX] |
 | Training MAE | [XX.XX]°C |
@@ -240,7 +354,7 @@ Split method: Random split with seed=42 for reproducibility
 | Test MAE | [XX.XX]°C |
 | Test rows | 37,810,583 |
 
-**Feature Importances (Top 10):**
+**Feature Importances (Full Mode - Top 10):**
 
 | Rank | Feature | Importance |
 |------|---------|------------|
