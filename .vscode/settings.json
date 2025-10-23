@@ -1,0 +1,11 @@
+{
+  "markdown-pdf.type": "pdf",
+  "markdown-pdf.prince": false,
+  "markdown-pdf.princePath": "",
+  "markdown-pdf.wkhtmltopdfPath": "",
+  "markdown-pdf.executablePath": "",
+  "markdown-pdf.mathjax": true,
+  "markdown-pdf.puppeteerWaitForTimeout": 5000,
+  "markdown-pdf.displayHeaderFooter": false
+}
+
