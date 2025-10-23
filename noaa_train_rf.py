@@ -121,39 +121,43 @@ print(f"Baseline RMSE (predict-mean) ≈ {baseline_rmse:.4f}")
 rf = RandomForestRegressor(featuresCol="features", labelCol=LABEL_COL, seed=SEED)
 
 if STRATEGY == "cv-full":
-    # bigger grid
     ntrees = [100, 200]
     depth  = [12, 16]
-    mtry   = [0.5, 0.7]   # featureSubsetStrategy as fraction (handled via setFeatureSubsetStrategy)
+    mtry_frac = [0.5, 0.7]      # as fractions; we’ll convert to Spark strings below
 elif STRATEGY == "cv-fast":
-    # smaller, faster
     ntrees = [100, 150]
     depth  = [12, 15]
-    mtry   = [0.7]
+    mtry_frac = [0.7]
 else:
-    ntrees, depth, mtry = [120], [14], [0.7]
+    ntrees = [120]
+    depth  = [14]
+    mtry_frac = [0.7]
 
-param_maps = []
-for nt in ntrees:
-    for md in depth:
-        for fs in mtry:
-            pm = ParamGridBuilder().baseOn({}).build()[0]
-            # pySpark ParamGridBuilder cannot directly set non-Param attrs; use setter methods in a tuple list:
-            param_maps.append({
-                rf.numTrees: nt,
-                rf.maxDepth: md,
-                rf.featureSubsetStrategy: f"{int(fs*100)}%"  # e.g., "70%"
-            })
+# Convert fractions to Spark's expected strings, e.g., "70%"
+mtry = [f"{int(x * 100)}%" for x in mtry_frac]
+
+# ✅ Proper ParamGrid
+param_grid = (
+    ParamGridBuilder()
+    .addGrid(rf.numTrees, ntrees)
+    .addGrid(rf.maxDepth, depth)
+    .addGrid(rf.featureSubsetStrategy, mtry)
+    .build()
+)
 
 evaluator = RegressionEvaluator(labelCol=LABEL_COL, predictionCol="prediction", metricName="rmse")
 pipe = Pipeline(stages=[imputer] + indexers + [encoder] + [assembler, rf])
 
-cv = CrossValidator(estimator=pipe,
-                    estimatorParamMaps=param_maps,
-                    evaluator=evaluator,
-                    numFolds=3,
-                    parallelism=4,
-                    seed=SEED)
+cv = CrossValidator(
+    estimator=pipe,
+    estimatorParamMaps=param_grid,   # use the grid we just built
+    evaluator=evaluator,
+    numFolds=3,
+    parallelism=4,
+    seed=SEED,
+)
+
+
 
 # -------------------- Fit --------------------
 start = time.time()
