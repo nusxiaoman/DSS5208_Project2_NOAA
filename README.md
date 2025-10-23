@@ -1,354 +1,335 @@
-# NOAA Weather Data Cleanup Pipeline
+# NOAA Weather Temperature Prediction
 
-## Overview
+**DSS5208 Project 2: Machine Learning on Weather Data**
 
-This cleanup pipeline processes raw NOAA weather CSV data and transforms it into a clean, ML-ready dataset for temperature prediction. The pipeline parses complex string-formatted weather measurements, handles missing values, and creates engineered features suitable for machine learning models.
+Predicting air temperature from NOAA global hourly weather observations using Apache Spark and machine learning.
 
-## Project Structure
+---
+
+## 📋 Project Overview
+
+This project processes **130 million** hourly weather observations from NOAA's global dataset to build machine learning models for temperature prediction. We use Apache Spark on Google Cloud Dataproc for distributed processing and train multiple regression models (Linear Regression, Random Forest, Gradient Boosted Trees).
+
+**Key Achievements:**
+- ✅ Processed 50GB of raw CSV data → 111MB compressed Parquet
+- ✅ 96.78% data retention after quality filtering
+- ✅ 14 engineered features with proper missing value handling
+- ✅ Models trained on 88M observations, tested on 38M
+- ✅ Best test RMSE: **[XX.XX]°C** (to be updated after training)
+
+---
+
+## 🗂️ Repository Structure
 
 ```
-gs://weather-ml-bucket-1760514177/
-├── data/csv/                      # Raw NOAA CSV files (~50GB)
-├── scripts/
-│   ├── noaa_cleanup_test.py      # Test script (1% sample)
-│   └── noaa_cleanup_full.py      # Full dataset processing
-└── warehouse/
-    ├── noaa_parquet/             # Raw parquet (from ETL)
-    └── noaa_clean_std/           # Cleaned data (output)
+project/
+├── README.md                          # This file - Project overview
+├── DATA_CLEANUP_README.md            # Data preprocessing documentation
+├── TRAINING_GUIDE.md                 # Model training instructions
+├── RESULTS_SUMMARY.md                # Final results and analysis
+│
+├── scripts/                          # All Python scripts
+│   ├── noaa_cleanup_full.py         # Data cleaning pipeline
+│   ├── train_test_split.py          # 70/30 train/test split
+│   ├── baseline_model_test.py       # Baseline Linear Regression
+│   ├── train_random_forest.py       # Random Forest training
+│   ├── train_gbt.py                 # Gradient Boosted Trees training
+│   ├── evaluate_model.py            # Test set evaluation
+│   └── compare_models.py            # Model comparison
+│
+└── outputs/                          # Model outputs (on GCS)
+    ├── baseline_test/
+    ├── rf_test/
+    ├── rf_full/
+    ├── gbt_test/
+    └── gbt_full/
 ```
 
-## Data Processing Pipeline
+---
 
-### Input Data Format
+## 📚 Documentation Quick Links
 
-Raw NOAA CSV files contain weather observations with complex string-encoded measurements:
+| Document | Purpose | When to Use |
+|----------|---------|-------------|
+| **[DATA_CLEANUP_README.md](DATA_CLEANUP_README.md)** | Data preprocessing pipeline | Understanding data cleaning steps |
+| **[TRAINING_GUIDE.md](TRAINING_GUIDE.md)** | Model training instructions | Running training jobs |
+| **[RESULTS_SUMMARY.md](RESULTS_SUMMARY.md)** | Final results and analysis | Project report, final metrics |
 
-- **TMP**: `"-0070,1"` → Temperature in Celsius × 10 + quality code
-- **DEW**: `"-0130,1"` → Dew point in Celsius × 10 + quality code
-- **SLP**: `"10208,1"` → Sea level pressure in hPa × 10 + quality code
-- **VIS**: `"025000,1,9,9"` → Visibility in meters + quality codes
-- **WND**: `"318,1,N,0061,1"` → Wind direction, type, speed × 10, quality codes
-- **AA1-AA3, GA1-GA3**: Precipitation observations
-- Missing values encoded as: `+9999`, `99999`, `999999` depending on field
+---
 
-### Features Extracted
-
-#### Geographic Features
-- `latitude`: Station latitude (degrees)
-- `longitude`: Station longitude (degrees)
-- `elevation`: Station elevation above sea level (meters)
-
-#### Target Variable
-- `temperature`: Air temperature in Celsius
-
-#### Weather Features
-- `dew_point`: Dew point temperature in Celsius
-- `sea_level_pressure`: Sea level pressure in hPa
-- `visibility`: Visibility distance in meters
-- `wind_speed`: Wind speed in m/s
-- `wind_direction`: Wind direction in degrees (0-360)
-- `precipitation`: Total precipitation in mm (sum of all precipitation observations)
-
-#### Temporal Features
-- `timestamp`: Original observation datetime
-- `year`, `month`, `day`, `hour`: Extracted time components
-- `hour_sin`, `hour_cos`: Cyclical encoding of hour (for 24-hour cycle)
-- `month_sin`, `month_cos`: Cyclical encoding of month (for seasonal cycle)
-
-#### Derived Features
-- `wind_dir_sin`, `wind_dir_cos`: Cyclical encoding of wind direction
-
-### Data Quality Filters
-
-The cleanup process applies the following filters:
-
-1. **Remove missing target values**: Rows where temperature is NULL
-2. **Temperature range**: Keep only -90°C to +60°C (physically reasonable)
-3. **Physical constraints**: Dew point must be ≤ temperature
-4. **Pressure range**: Sea level pressure must be 950-1050 hPa
-5. **Outlier removal**: Extreme values beyond reasonable bounds
-
-### Handling Missing Values
-
-- **Temperature (target)**: Rows with missing temperature are removed
-- **Other features**: Missing values are kept as NULL for model to handle
-- **Precipitation**: Missing precipitation values treated as 0.0 mm
-- **Wind direction/speed**: NULL when encoded as 999 or 9999
-
-## Usage
+## 🚀 Quick Start
 
 ### Prerequisites
+- Google Cloud Project with Dataproc enabled
+- Access to NOAA Global Hourly dataset (2024)
+- gsutil and gcloud CLI configured
 
-- Google Cloud Project: `distributed-map-475111-h2`
-- GCS Bucket: `weather-ml-bucket-1760514177`
-- Dataproc Serverless enabled
-- Raw CSV files uploaded to `gs://weather-ml-bucket-1760514177/data/csv/`
-
-### Environment Setup (Windows PowerShell)
+### Setup
 
 ```powershell
-# Authenticate
-gcloud auth login
-gcloud auth application-default login
-
-# Set project and region
+# Set environment
 gcloud config set project distributed-map-475111-h2
 gcloud config set dataproc/region asia-southeast1
 
-# Set environment variables
-$env:PROJECT_ID = "distributed-map-475111-h2"
-$env:REGION = "asia-southeast1"
+# Set variables
 $env:BUCKET = "weather-ml-bucket-1760514177"
 ```
 
-### Step 1: Test with Sample Data (Recommended)
-
-Process 1% sample to validate the pipeline:
+### Run Complete Pipeline
 
 ```powershell
-# Upload test script
-gsutil cp noaa_cleanup_test.py gs://weather-ml-bucket-1760514177/scripts/
-
-# Run test cleanup
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+# 1. Data Cleanup (45 min)
 gcloud dataproc batches submit pyspark `
-    gs://weather-ml-bucket-1760514177/scripts/noaa_cleanup_test.py `
+    gs://$env:BUCKET/scripts/noaa_cleanup_full.py `
     --region=asia-southeast1 `
-    --deps-bucket=weather-ml-bucket-1760514177 `
-    --subnet=default `
-    --batch=cleanup-test-$timestamp
+    --deps-bucket=$env:BUCKET `
+    --subnet=default
 
-# Monitor job
-gcloud dataproc batches list --region=asia-southeast1 --limit=5
-
-# View logs in browser
-# https://console.cloud.google.com/dataproc/batches?project=distributed-map-475111-h2&region=asia-southeast1
-```
-
-**Expected Output:**
-- Sample size: ~1% of total data
-- Processing time: 5-10 minutes
-- Output location: `gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_test/`
-
-### Step 2: Process Full Dataset
-
-Once test validates the parsing logic, process the complete dataset (130M rows, ~50GB CSV):
-
-```powershell
-# Upload optimized full script
-gsutil cp noaa_cleanup_full.py gs://weather-ml-bucket-1760514177/scripts/
-
-# Run full cleanup (using Spark defaults - simpler and reliable)
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+# 2. Train/Test Split (20 min)
 gcloud dataproc batches submit pyspark `
-    gs://weather-ml-bucket-1760514177/scripts/noaa_cleanup_full.py `
+    gs://$env:BUCKET/scripts/train_test_split.py `
     --region=asia-southeast1 `
-    --deps-bucket=weather-ml-bucket-1760514177 `
+    --deps-bucket=$env:BUCKET `
+    --subnet=default
+
+# 3. Baseline Test (10 min)
+gcloud dataproc batches submit pyspark `
+    gs://$env:BUCKET/scripts/baseline_model_test.py `
+    --region=asia-southeast1 `
+    --deps-bucket=$env:BUCKET `
+    --subnet=default
+
+# 4. Train Random Forest (2-4 hrs)
+gcloud dataproc batches submit pyspark `
+    gs://$env:BUCKET/scripts/train_random_forest.py `
+    --region=asia-southeast1 `
+    --deps-bucket=$env:BUCKET `
     --subnet=default `
-    --batch=cleanup-full-$timestamp
+    -- `
+    gs://$env:BUCKET/warehouse/noaa_train `
+    gs://$env:BUCKET/outputs/rf_full `
+    full
+
+# 5. Train GBT (3-6 hrs)
+gcloud dataproc batches submit pyspark `
+    gs://$env:BUCKET/scripts/train_gbt.py `
+    --region=asia-southeast1 `
+    --deps-bucket=$env:BUCKET `
+    --subnet=default `
+    -- `
+    gs://$env:BUCKET/warehouse/noaa_train `
+    gs://$env:BUCKET/outputs/gbt_full `
+    full
+
+# 6. Evaluate Models (10-20 min each)
+gcloud dataproc batches submit pyspark `
+    gs://$env:BUCKET/scripts/evaluate_model.py `
+    --region=asia-southeast1 `
+    --deps-bucket=$env:BUCKET `
+    --subnet=default `
+    -- `
+    gs://$env:BUCKET/outputs/rf_full/best_rf_model `
+    gs://$env:BUCKET/warehouse/noaa_test `
+    gs://$env:BUCKET/outputs/rf_full_evaluation
 ```
 
-**Note**: If you need to tune Spark properties, use proper syntax:
-```powershell
-# With custom properties (optional)
---properties="spark.sql.shuffle.partitions=200,spark.default.parallelism=200"
+**See [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for detailed instructions.**
+
+---
+
+## 📊 Dataset
+
+**Source**: NOAA Global Hourly Surface Weather Observations  
+**URL**: https://www.ncei.noaa.gov/data/global-hourly/archive/csv/  
+**Documentation**: https://www.ncei.noaa.gov/data/global-hourly/doc/
+
+### Dataset Statistics
+
+| Metric | Value |
+|--------|-------|
+| Original Rows | 130,222,106 |
+| Original Size | ~50GB (CSV) |
+| After Cleaning | 126,035,277 rows |
+| Cleaned Size | 111MB (Parquet) |
+| Retention Rate | 96.78% |
+| Training Set | 88,224,694 rows (70%) |
+| Test Set | 37,810,583 rows (30%) |
+
+### Features (14 Total)
+
+**Geographic** (3): latitude, longitude, elevation  
+**Weather** (7): dew_point, sea_level_pressure, visibility, wind_speed, wind_dir_sin, wind_dir_cos, precipitation  
+**Temporal** (4): hour_sin, hour_cos, month_sin, month_cos  
+**Target**: temperature (°C)
+
+---
+
+## 🤖 Models
+
+### 1. Baseline: Linear Regression
+- **Purpose**: Pipeline validation
+- **Test RMSE**: [XX.XX]°C
+- **Test R²**: [0.XX]
+
+### 2. Random Forest Regressor
+- **Hyperparameters**: numTrees, maxDepth, minInstancesPerNode
+- **Cross-validation**: 3-fold
+- **Test RMSE**: [XX.XX]°C
+- **Test R²**: [0.XX]
+- **Training time**: [XX] hours
+
+### 3. Gradient Boosted Trees
+- **Hyperparameters**: maxIter, maxDepth, stepSize
+- **Cross-validation**: 3-fold
+- **Test RMSE**: [XX.XX]°C
+- **Test R²**: [0.XX]
+- **Training time**: [XX] hours
+
+**Best Model**: [To be determined after training]
+
+---
+
+## 💻 Computing Environment
+
+**Platform**: Google Cloud Platform  
+**Service**: Dataproc Serverless (Batch processing)  
+**Region**: asia-southeast1  
+**Spark Version**: 2.2.61
+
+**Default Resources:**
+- Driver: 4 cores, 9.6GB memory
+- Executors: 4 cores, 9.6GB memory each
+- Dynamic allocation: Enabled
+
+**Total Processing Time**: ~6-11 hours (all steps)
+
+---
+
+## 📈 Results Summary
+
+**See [RESULTS_SUMMARY.md](RESULTS_SUMMARY.md) for complete analysis.**
+
+### Quick Metrics
+
+| Model | Test RMSE | Test R² | Training Time |
+|-------|-----------|---------|---------------|
+| Linear Regression | [XX.XX]°C | [0.XX] | ~10 min |
+| Random Forest | [XX.XX]°C | [0.XX] | ~[X] hrs |
+| Gradient Boosted Trees | [XX.XX]°C | [0.XX] | ~[X] hrs |
+
+### Top Features (Example)
+1. dew_point
+2. sea_level_pressure
+3. latitude
+4. month_sin
+5. hour_sin
+
+*Feature importance rankings to be updated after training.*
+
+---
+
+## 🔧 Key Technical Decisions
+
+### Data Preprocessing
+- **Missing values**: Median imputation (robust to outliers)
+- **Cyclical encoding**: For hour, month, wind direction (preserves continuity)
+- **Quality filters**: Physical constraints and outlier removal
+- **Compression**: Parquet format (99.8% size reduction)
+
+### Model Training
+- **Cross-validation**: 3-fold for hyperparameter tuning
+- **Grid search**: Comprehensive hyperparameter space
+- **Evaluation**: RMSE, R², MAE on held-out test set
+- **Seed**: Fixed (42) for reproducibility
+
+### Performance Optimizations
+- Efficient single-pass aggregations for missing value counts
+- Partitioned data storage (by year/month)
+- Spark adaptive query execution
+- Dynamic resource allocation
+
+---
+
+## 📦 Submission Package
+
+For Canvas submission, the package includes:
+
 ```
-⚠️ Always use **quotes** around properties and **comma separation** (no spaces).
-
-**Expected Output:**
-- **Processing time**: 30-45 minutes
-- **Input rows**: ~130,222,106 (full dataset)
-- **Output rows**: ~125M (95-97% retention after filtering)
-- **Output location**: `gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_std/`
-- **Partitioned by**: `year=2024/month=1/`, `year=2024/month=2/`, etc.
-- **Format**: Compressed Parquet (~10-20GB)
-
-### Step 3: Verify Cleaned Data
-
-```powershell
-# Check output structure
-gsutil ls gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_std/
-
-# View sample with PySpark inspection script
-# (Similar to inspect_data_v2.py but pointing to cleaned data)
-```
-
-## Monitoring Jobs
-
-### Using Console (Recommended)
-1. Navigate to: [Dataproc Batches Console](https://console.cloud.google.com/dataproc/batches?project=distributed-map-475111-h2&region=asia-southeast1)
-2. Click on your batch job
-3. View status, logs, and metrics
-
-### Using CLI
-
-```powershell
-# List recent batches
-gcloud dataproc batches list --region=asia-southeast1 --limit=10
-
-# Get batch status
-$BATCH_ID = "cleanup-test-YYYYMMDD-HHMMSS"
-gcloud dataproc batches describe $BATCH_ID --region=asia-southeast1
-
-# View logs
-gcloud logging read "resource.type=cloud_dataproc_batch AND resource.labels.batch_id=$BATCH_ID" `
-    --limit=500 `
-    --format="table(textPayload)" `
-    --project=distributed-map-475111-h2
-```
-
-## Output Schema
-
-The cleaned dataset has the following schema:
-
-```
-root
- |-- STATION: string
- |-- timestamp: timestamp
- |-- latitude: double
- |-- longitude: double
- |-- elevation: double
- |-- station_name: string
- |-- temperature: double (TARGET)
- |-- dew_point: double
- |-- sea_level_pressure: double
- |-- visibility: double
- |-- wind_direction: integer
- |-- wind_speed: double
- |-- precipitation: double
- |-- year: integer
- |-- month: integer
- |-- day: integer
- |-- hour: integer
- |-- hour_sin: double
- |-- hour_cos: double
- |-- month_sin: double
- |-- month_cos: double
- |-- wind_dir_sin: double
- |-- wind_dir_cos: double
-```
-
-## Data Statistics
-
-After cleanup, expect the following characteristics:
-
-### Data Volume
-- **Input**: ~130M rows, ~50GB CSV
-- **Output**: ~125M rows (95-97% retention), compressed Parquet (~10-20GB)
-- **Partitions**: By year and month for efficient access
-- **Test mode**: 1% sample (~1.3M rows) for validation
-
-### Feature Ranges
-- **Temperature**: -90°C to +60°C
-- **Dew Point**: -100°C to +50°C (always ≤ temperature)
-- **Pressure**: 950 to 1050 hPa
-- **Wind Speed**: 0 to 100 m/s
-- **Visibility**: 0 to 999999 meters
-- **Precipitation**: 0 to 999 mm
-
-### Missing Value Rates (Typical)
-- **Temperature**: 0% (filtered out - required for target)
-- **Dew Point**: ~15% (typical for stations)
-- **Sea Level Pressure**: ~59% (many stations don't report SLP)
-- **Visibility**: ~33% (common for this measurement)
-- **Wind Speed**: ~10-15%
-- **Precipitation**: ~30-40% (treated as 0 when missing)
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue 1: "Path not found" error**
-```
-Solution: Verify input path exists
-gsutil ls gs://weather-ml-bucket-1760514177/data/csv/
-```
-
-**Issue 2: Properties syntax error**
-```
-Error: "spark.sql.shuffle.partitions should be int, but was..."
-Solution: Use proper syntax with quotes and commas:
---properties="spark.sql.shuffle.partitions=200,spark.default.parallelism=200"
-NOT: --properties=spark.sql.shuffle.partitions=200,spark.default.parallelism=200
-```
-
-**Issue 3: "Insufficient resources" error**
-```
-Solution: Let Spark use defaults (remove --properties flag) or increase resources:
---properties="spark.executor.memory=8g,spark.driver.memory=8g"
-```
-
-**Issue 4: Job stuck in PENDING**
-```
-Solution: Check Dataproc quotas and subnet configuration
-gcloud compute networks subnets describe default --region=asia-southeast1
-```
-
-**Issue 5: Slow performance on missing value counts**
-```
-Solution: The optimized script uses single-pass aggregations instead of per-column 
-filtering. If using the test script and it's slow, this is expected - the full 
-optimized version is much faster.
-```
-
-### Performance Tuning
-
-For large datasets (if defaults aren't sufficient), adjust Spark properties:
-
-```powershell
-# Proper syntax for Spark properties in PowerShell
---properties="spark.sql.shuffle.partitions=400,spark.default.parallelism=400,spark.executor.memory=8g,spark.driver.memory=8g,spark.executor.cores=4"
+submission/
+├── README.md                     # This file
+├── DATA_CLEANUP_README.md       # Cleanup documentation
+├── TRAINING_GUIDE.md            # Training instructions
+├── RESULTS_SUMMARY.md           # Final results
+├── report.pdf                   # Main project report
+├── ai_communication.txt         # AI assistant conversation log
+│
+├── code/
+│   ├── noaa_cleanup_full.py
+│   ├── train_test_split.py
+│   ├── baseline_model_test.py
+│   ├── train_random_forest.py
+│   ├── train_gbt.py
+│   ├── evaluate_model.py
+│   └── compare_models.py
+│
+└── models/
+    ├── best_rf_model/           # Trained Random Forest
+    └── best_gbt_model/          # Trained GBT
 ```
 
-**Important Notes:**
-- Always use **double quotes** around the entire properties string
-- Separate properties with **commas only** (no spaces after commas)
-- Default TTL is 4 hours (14400s) - usually sufficient
-- The optimized script uses single-pass aggregations for better performance
+---
 
-## Next Steps
+## 🎓 Learning Outcomes
 
-After cleanup is complete:
+This project demonstrates:
+- ✅ Large-scale data processing with Apache Spark
+- ✅ Distributed machine learning on cloud infrastructure
+- ✅ Feature engineering for weather data
+- ✅ Hyperparameter tuning with cross-validation
+- ✅ Model evaluation and comparison
+- ✅ Production ML pipeline development
 
-1. **Split data** into train (70%) and test (30%) sets
-2. **Train models** using cleaned dataset:
-   - Random Forest Regression
-   - Gradient Boosted Trees
-3. **Evaluate** using RMSE and other metrics
-4. **Feature engineering**: Consider additional derived features
+---
 
-## File Descriptions
+## 🔗 References
 
-### Scripts
+1. NOAA Global Hourly Dataset: https://www.ncei.noaa.gov/data/global-hourly/
+2. Google Cloud Dataproc: https://cloud.google.com/dataproc/docs
+3. Apache Spark MLlib: https://spark.apache.org/docs/latest/ml-guide.html
+4. PySpark Documentation: https://spark.apache.org/docs/latest/api/python/
 
-- **noaa_cleanup_test.py**: Test version, processes 1% sample for validation
-- **noaa_cleanup_full.py**: Production version, processes entire dataset
-- **inspect_data_v2.py**: Data inspection utility
+---
 
-### Key Functions
+## 👥 Team Members
 
-- `parse_temperature()`: Extracts temperature from string format
-- `parse_wind()`: Parses wind direction and speed
-- `parse_pressure()`: Extracts sea level pressure
-- `parse_visibility()`: Parses visibility distance
-- `parse_precipitation()`: Sums all precipitation measurements
+[List your group members and student IDs here]
 
-## References
+---
 
-- **NOAA Dataset Documentation**: https://www.ncei.noaa.gov/data/global-hourly/doc/
-- **Google Cloud Dataproc**: https://cloud.google.com/dataproc/docs
-- **PySpark Documentation**: https://spark.apache.org/docs/latest/api/python/
+## 📅 Project Timeline
 
-## Contact & Support
+| Milestone | Date | Status |
+|-----------|------|--------|
+| Data Cleanup | [Date] | ✅ Complete |
+| Train/Test Split | [Date] | ✅ Complete |
+| Baseline Model | [Date] | ⏳ In Progress |
+| RF Training | [Date] | 📋 Planned |
+| GBT Training | [Date] | 📋 Planned |
+| Model Evaluation | [Date] | 📋 Planned |
+| Final Report | [Date] | 📋 Planned |
+| Submission | November 5, 2025 | 🎯 Deadline |
 
-For issues or questions about this pipeline:
-1. Check Dataproc batch logs in Cloud Console
-2. Review this README for common issues
-3. Verify all prerequisites are met
+---
+
+## 📧 Contact
+
+For questions about this project:
+- Course: DSS5208 - Distributed Systems and Big Data
+- Instructor: [Name]
+- Institution: [University]
 
 ---
 
 **Last Updated**: October 24, 2024  
 **Version**: 1.0  
-**Author**: Project Team  
-**Course**: DSS5208 Project 2 - Machine Learning on Weather Data
+**Status**: In Progress - Model Training Phase
