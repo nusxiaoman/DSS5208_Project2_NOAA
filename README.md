@@ -105,7 +105,7 @@ gcloud dataproc batches submit pyspark `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
     --subnet=default `
-    -- `
+    '--' `
     gs://$env:BUCKET/warehouse/noaa_train `
     gs://$env:BUCKET/outputs/rf_full `
     full
@@ -116,7 +116,7 @@ gcloud dataproc batches submit pyspark `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
     --subnet=default `
-    -- `
+    '--' `
     gs://$env:BUCKET/warehouse/noaa_train `
     gs://$env:BUCKET/outputs/gbt_full `
     full
@@ -127,10 +127,12 @@ gcloud dataproc batches submit pyspark `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
     --subnet=default `
-    -- `
+    '--' `
     gs://$env:BUCKET/outputs/rf_full/best_rf_model `
     gs://$env:BUCKET/warehouse/noaa_test `
     gs://$env:BUCKET/outputs/rf_full_evaluation
+
+# Note: The '--' separator must be quoted in PowerShell
 ```
 
 **See [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for detailed instructions.**
