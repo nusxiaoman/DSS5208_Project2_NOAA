@@ -5,8 +5,8 @@ spark = SparkSession.builder \
     .appName("Inspect NOAA Data") \
     .getOrCreate()
 
-# Read one month partition
-df = spark.read.parquet("gs://weather-ml-bucket-1760514177/warehouse/noaa_parquet/month=1/")
+# Read one month partition - CORRECTED PATH
+df = spark.read.parquet("gs://weather-ml-bucket-1760514177/warehouse/noaa_parquet/year=2024/month=1/")
 
 print("=" * 80)
 print("TOTAL ROWS:")
