@@ -131,8 +131,6 @@ Split method: Random split with seed=42 for reproducibility
 
 ### 4.1 Baseline Model: Linear Regression
 
-**Purpose**: Validate ML pipeline and establish baseline performance
-
 **Configuration:**
 - Algorithm: Linear Regression
 - Features: All 14 features
@@ -143,11 +141,11 @@ Split method: Random split with seed=42 for reproducibility
 
 | Metric | Training Set | Test Set |
 |--------|--------------|----------|
-| RMSE (°C) | [XX.XX] | [XX.XX] |
-| R² Score | [0.XX] | [0.XX] |
-| MAE (°C) | [XX.XX] | [XX.XX] |
+| RMSE (°C) | 5.56 | 5.56 |
+| R² Score | 0.8024 | 0.8017 |
+| MAE (°C) | 4.03 | 4.03 |
 
-**Analysis**: [Brief interpretation of baseline results]
+**Analysis**: The baseline Linear Regression model achieves 80% R², explaining a substantial portion of temperature variance. The consistent performance between training and test sets indicates no overfitting. This provides a solid baseline for more complex models to improve upon.
 
 ---
 
