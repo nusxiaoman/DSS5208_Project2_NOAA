@@ -1,0 +1,22 @@
+# Ignore Python cache and logs
+__pycache__/
+*.pyc
+*.log
+
+# Ignore environment and notebook checkpoints
+.env/
+.ipynb_checkpoints/
+
+# Ignore large results and model outputs
+rf_results/
+gbt_results/
+outputs/
+warehouse/
+*.snappy.parquet
+*.csv
+*.pkl
+
+# Ignore system / VSCode files
+.vscode/
+.DS_Store
+Thumbs.db
