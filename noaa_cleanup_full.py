@@ -1,13 +1,14 @@
 """
-NOAA Weather Data Cleanup Script - Full Version
+NOAA Weather Data Cleanup Script - Optimized Full Version
 Processes complete raw NOAA CSV data and extracts clean features for ML training
+Optimized for performance with efficient aggregations
 """
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, split, when, regexp_extract, regexp_replace,
     to_timestamp, year, month, dayofmonth, hour,
-    sin, cos, lit, expr, abs as spark_abs
+    sin, cos, lit, expr, abs as spark_abs, count, sum as spark_sum
 )
 from pyspark.sql.types import DoubleType, IntegerType
 import sys
@@ -65,11 +66,12 @@ def parse_precipitation(precip_col):
     )
 
 def main():
-    # Initialize Spark
+    # Initialize Spark with optimized settings
     spark = SparkSession.builder \
-        .appName("NOAA Data Cleanup - Full Dataset") \
+        .appName("NOAA Data Cleanup - Optimized Full") \
         .config("spark.sql.adaptive.enabled", "true") \
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+        .config("spark.sql.adaptive.skewJoin.enabled", "true") \
         .getOrCreate()
     
     # Input/output paths
@@ -77,13 +79,14 @@ def main():
     output_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_std"
     
     print("=" * 80)
-    print("NOAA Weather Data Cleanup - Full Dataset Processing")
+    print("NOAA Weather Data Cleanup - Optimized Full Dataset")
     print("=" * 80)
     
     # Read raw CSV data
     print(f"\nReading data from: {input_path}")
     df = spark.read.csv(input_path, header=True, inferSchema=False)
     
+    # Get initial count (this is cached by Spark)
     total_rows = df.count()
     print(f"Total rows loaded: {total_rows:,}")
     print(f"Columns: {len(df.columns)}")
@@ -145,7 +148,6 @@ def main():
     
     # Filter out rows where temperature (target) is missing
     print("\nFiltering invalid records...")
-    rows_before_filter = df_clean.count()
     
     df_clean = df_clean.filter(col('temperature').isNotNull())
     
@@ -165,16 +167,19 @@ def main():
         ((col('sea_level_pressure') >= 950) & (col('sea_level_pressure') <= 1050))
     )
     
-    rows_after_filter = df_clean.count()
-    rows_removed = rows_before_filter - rows_after_filter
+    # Cache after filtering for multiple operations
+    df_clean.cache()
     
-    print(f"\nRows before filtering: {rows_before_filter:,}")
+    rows_after_filter = df_clean.count()
+    rows_removed = total_rows - rows_after_filter
+    
+    print(f"\nRows before filtering: {total_rows:,}")
     print(f"Rows after filtering: {rows_after_filter:,}")
-    print(f"Rows removed: {rows_removed:,} ({100*rows_removed/rows_before_filter:.2f}%)")
+    print(f"Rows removed: {rows_removed:,} ({100*rows_removed/total_rows:.2f}%)")
     
     # Show sample of cleaned data
     print("\n" + "=" * 80)
-    print("SAMPLE OF CLEANED DATA (10 rows)")
+    print("SAMPLE OF CLEANED DATA (first 10 rows)")
     print("=" * 80)
     df_clean.select(
         'temperature', 'dew_point', 'sea_level_pressure', 
@@ -182,43 +187,47 @@ def main():
         'latitude', 'longitude', 'hour', 'month'
     ).show(10, truncate=False)
     
-    # Show statistics
+    # Show statistics (efficient - single pass)
     print("\n" + "=" * 80)
-    print("SUMMARY STATISTICS")
+    print("SUMMARY STATISTICS (Key Weather Features)")
     print("=" * 80)
     df_clean.select(
         'temperature', 'dew_point', 'sea_level_pressure',
         'wind_speed', 'visibility', 'precipitation'
     ).describe().show()
     
-    # Check for missing values
+    # OPTIMIZED: Count all nulls in single pass using aggregation
     print("\n" + "=" * 80)
-    print("MISSING VALUE ANALYSIS")
+    print("MISSING VALUE ANALYSIS (Efficient Single-Pass)")
     print("=" * 80)
-    total = rows_after_filter
     
-    # Count nulls for each column
-    from pyspark.sql.functions import count, when, isnan
+    # Create aggregation expressions for all columns at once
+    key_cols = ['temperature', 'dew_point', 'sea_level_pressure', 
+                'wind_speed', 'wind_direction', 'visibility', 
+                'precipitation', 'latitude', 'longitude']
     
-    null_counts = df_clean.select([
-        count(when(col(c).isNull(), c)).alias(c) 
-        for c in df_clean.columns
-    ]).collect()[0]
+    null_exprs = [count(when(col(c).isNull(), c)).alias(c) for c in key_cols]
+    null_counts = df_clean.select(null_exprs).collect()[0]
     
-    print(f"{'Column':<25} {'Null Count':>15} {'Percentage':>12}")
-    print("-" * 55)
-    for col_name in df_clean.columns:
+    print(f"{'Feature':<25} {'Non-Null Count':>15} {'Null Count':>12} {'Null %':>10}")
+    print("-" * 65)
+    for col_name in key_cols:
         null_count = null_counts[col_name]
-        if null_count > 0:
-            percentage = 100 * null_count / total
-            print(f"{col_name:<25} {null_count:>15,} {percentage:>11.2f}%")
+        non_null = rows_after_filter - null_count
+        percentage = 100 * null_count / rows_after_filter
+        print(f"{col_name:<25} {non_null:>15,} {null_count:>12,} {percentage:>9.2f}%")
     
-    # Cache for faster writes
-    df_clean.cache()
+    # Show partition distribution
+    print("\n" + "=" * 80)
+    print("DATA DISTRIBUTION BY MONTH")
+    print("=" * 80)
+    df_clean.groupBy('year', 'month').count() \
+        .orderBy('year', 'month').show(100)
     
     # Save cleaned data partitioned by year and month
     print(f"\n\nSaving cleaned data to: {output_path}")
-    print("Writing partitioned parquet files (this may take a while)...")
+    print("Writing partitioned parquet files...")
+    print("(This may take 20-40 minutes depending on data size)")
     
     df_clean.write \
         .mode('overwrite') \
@@ -226,15 +235,16 @@ def main():
         .parquet(output_path)
     
     print("\n" + "=" * 80)
-    print("CLEANUP COMPLETED SUCCESSFULLY!")
+    print("✓ CLEANUP COMPLETED SUCCESSFULLY!")
     print("=" * 80)
     print(f"Output location: {output_path}")
     print(f"Final row count: {rows_after_filter:,}")
     print(f"Data retention rate: {100*rows_after_filter/total_rows:.2f}%")
+    print(f"\nData is partitioned by year and month for efficient access.")
+    print("Ready for train/test split and model training!")
     
-    # Show partition summary
-    print("\nPartition Summary:")
-    df_clean.groupBy('year', 'month').count().orderBy('year', 'month').show(100)
+    # Unpersist cache
+    df_clean.unpersist()
     
     spark.stop()
 
