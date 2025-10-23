@@ -1,4 +1,5 @@
 {
+  // --- Markdown PDF settings ---
   "markdown-pdf.type": "pdf",
   "markdown-pdf.prince": false,
   "markdown-pdf.princePath": "",
@@ -6,6 +7,17 @@
   "markdown-pdf.executablePath": "",
   "markdown-pdf.mathjax": true,
   "markdown-pdf.puppeteerWaitForTimeout": 5000,
-  "markdown-pdf.displayHeaderFooter": false
+  "markdown-pdf.displayHeaderFooter": false,
+
+  // --- Git auto-commit on save ---
+  "git.autofetch": true,
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": ".*",
+        "cmd": "powershell -ExecutionPolicy Bypass -NoLogo -NoProfile -Command \"git add -A; if((git status --porcelain).Length -gt 0){ git commit -m \\\"auto: save $(Get-Date -Format yyyy-MM-dd_HH-mm-ss)\\\"; git push; }\""
+      }
+    ]
+  }
 }
 
