@@ -272,7 +272,7 @@ Split method: Random split with seed=42 for reproducibility
 **Purpose**: Validate GBT pipeline and tune hyperparameters on sample data
 
 **Configuration:**
-- Sample size: ~8,823,031 rows (10% of training data)
+- Sample size: 8,823,031 rows (10% of training data)
 - Algorithm: Gradient Boosted Trees Regression
 - Hyperparameter Tuning: Grid Search with 2-Fold Cross-Validation
 - Models tested: 4 (2 maxIter × 2 maxDepth combinations)
@@ -281,42 +281,62 @@ Split method: Random split with seed=42 for reproducibility
 
 | Parameter | Values Tested | Best Value |
 |-----------|---------------|------------|
-| `maxIter` | [10, 20] | [XX] |
-| `maxDepth` | [3, 5] | [X] |
+| `maxIter` | [10, 20] | 20 |
+| `maxDepth` | [3, 5] | 5 |
 | `stepSize` | [0.1] | 0.1 |
 
 **Training Results (Test Mode):**
 
 | Metric | Value |
 |--------|-------|
-| Training rows | [~8,823,031] |
-| Training RMSE | [XX.XX]°C |
-| Training R² | [0.XX] |
-| Training MAE | [XX.XX]°C |
-| Best CV RMSE | [XX.XX]°C |
-| Number of trees | [XX] |
-| Training time | [XX] minutes |
+| Training rows | 8,823,031 |
+| Training RMSE | 4.93°C |
+| Training R² | 0.8341 |
+| Training MAE | 3.59°C |
+| Best CV RMSE | 4.94°C |
+| Worst CV RMSE | 6.30°C |
+| Mean CV RMSE | 5.61°C |
+| Number of trees | 20 |
+| Training time | ~40 minutes |
 
 **Performance vs Baseline & RF:**
-- vs Baseline: [XX.XX]°C → [XX.XX]°C ([XX]% improvement)
-- vs RF Test: [XX.XX]°C vs [XX.XX]°C
+- vs Baseline: 5.56°C → 4.93°C (**11.3% improvement**)
+- vs RF Test: 4.93°C vs 4.64°C (**RF is 6% better**)
 
 **Feature Importances (Test Mode - Top 10):**
 
-| Rank | Feature | Importance |
-|------|---------|------------|
-| 1 | [feature_name] | [0.XXX] |
-| 2 | [feature_name] | [0.XXX] |
-| 3 | [feature_name] | [0.XXX] |
-| 4 | [feature_name] | [0.XXX] |
-| 5 | [feature_name] | [0.XXX] |
-| 6 | [feature_name] | [0.XXX] |
-| 7 | [feature_name] | [0.XXX] |
-| 8 | [feature_name] | [0.XXX] |
-| 9 | [feature_name] | [0.XXX] |
-| 10 | [feature_name] | [0.XXX] |
+| Rank | Feature | Importance | Notes |
+|------|---------|------------|-------|
+| 1 | dew_point | 0.3697 (36.97%) | Most critical (similar to RF) |
+| 2 | latitude | 0.2069 (20.69%) | Geographic importance |
+| 3 | longitude | 0.0853 (8.53%) | East-west variation |
+| 4 | month_cos | 0.0815 (8.15%) | Seasonal patterns |
+| 5 | month_sin | 0.0600 (6.00%) | Seasonal patterns |
+| 6 | elevation | 0.0503 (5.03%) | Altitude effect (higher than RF) |
+| 7 | hour_sin | 0.0446 (4.46%) | Diurnal cycle (higher than RF) |
+| 8 | hour_cos | 0.0370 (3.70%) | Diurnal cycle |
+| 9 | wind_speed | 0.0198 (1.98%) | Minor predictor |
+| 10 | visibility | 0.0196 (1.96%) | Minor predictor |
 
-**Analysis**: [To be filled after GBT test completes - compare with RF performance, feature importance differences, computational efficiency]
+**Comparison: GBT vs RF Feature Importances**
+
+| Feature | RF Importance | GBT Importance | Difference |
+|---------|---------------|----------------|------------|
+| dew_point | 38.19% | 36.97% | Similar ✅ |
+| latitude | 26.71% | 20.69% | RF values more |
+| longitude | 3.73% | 8.53% | **GBT values 2.3x more** |
+| month_cos | 17.35% | 8.15% | **RF values 2.1x more** |
+| elevation | 1.54% | 5.03% | **GBT values 3.3x more** |
+| hour_sin | 1.21% | 4.46% | **GBT values 3.7x more** |
+
+**Key Insights:**
+- Both models agree dew_point and latitude are most important
+- RF emphasizes seasonal patterns (month) more strongly
+- GBT gives more weight to geographic spread (longitude) and elevation
+- GBT captures diurnal patterns (hour) better than RF
+- Overall, RF's feature weighting leads to better predictions
+
+**Analysis**: Gradient Boosted Trees in test mode showed solid improvement over baseline (11.3% RMSE reduction) but underperformed compared to Random Forest by 6% (4.93°C vs 4.64°C). While both models agree on the top two features (dew_point and latitude), they differ in how they weight other features. GBT's sequential boosting approach gave more importance to elevation and temporal features (hour), while RF's ensemble approach favored seasonal patterns more heavily. The cross-validation results (best CV: 4.94°C) are consistent with training, indicating the model generalizes well, but not as well as Random Forest. Given RF's superior performance across all metrics and similar training time (~35 vs ~40 minutes), Random Forest appears to be the better model architecture for this temperature prediction task.
 
 #### 4.3.2 Full Mode (Production Training)
 
