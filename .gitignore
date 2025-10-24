@@ -20,3 +20,6 @@ warehouse/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Ignore old/failed/archive files
+old_files/
