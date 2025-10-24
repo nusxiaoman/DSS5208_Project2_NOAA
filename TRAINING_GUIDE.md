@@ -88,17 +88,22 @@ gcloud dataproc batches submit pyspark `
     --region=asia-southeast1 `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
+    --ttl=28800s `
     --batch=rf-full-$timestamp `
-    -- `
+    '--' `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
     gs://weather-ml-bucket-1760514177/outputs/rf_full `
     full
+
+# Note: The '--' separator must be in quotes for PowerShell
+# TTL set to 8 hours (28800s) to prevent timeout - default 4hrs is too short
 ```
 
 **Parameters**:
 - Full mode: 3 tree configs × 3 depth configs × 2 min instances = 18 models
 - 3-fold cross-validation
 - Grid search: numTrees=[50,100,150], maxDepth=[10,15,20]
+- TTL: 8 hours (prevents 4-hour default timeout)
 
 ---
 
@@ -121,10 +126,12 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
     --batch=gbt-test-$timestamp `
-    -- `
+    '--' `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
     gs://weather-ml-bucket-1760514177/outputs/gbt_test `
     test
+
+# Note: The '--' must be in quotes for PowerShell
 ```
 
 **Parameters**:
@@ -143,17 +150,22 @@ gcloud dataproc batches submit pyspark `
     --region=asia-southeast1 `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
+    --ttl=43200s `
     --batch=gbt-full-$timestamp `
-    -- `
+    '--' `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
     gs://weather-ml-bucket-1760514177/outputs/gbt_full `
     full
+
+# Note: The '--' separator must be in quotes for PowerShell
+# TTL set to 12 hours (43200s) - GBT can take longer than RF
 ```
 
 **Parameters**:
 - Full mode: 3 iter × 3 depth × 3 step sizes = 27 models
 - 3-fold cross-validation
 - Grid search: maxIter=[50,100,150], maxDepth=[5,7,10], stepSize=[0.05,0.1,0.2]
+- TTL: 12 hours (GBT typically takes longer than RF)
 
 ---
 
@@ -175,10 +187,12 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
     --batch=eval-rf-$timestamp `
-    -- `
+    '--' `
     gs://weather-ml-bucket-1760514177/outputs/rf_full/best_rf_model `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_test `
     gs://weather-ml-bucket-1760514177/outputs/rf_full_evaluation
+
+# Note: The '--' must be in quotes for PowerShell
 ```
 
 #### Evaluate GBT
@@ -191,10 +205,12 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
     --batch=eval-gbt-$timestamp `
-    -- `
+    '--' `
     gs://weather-ml-bucket-1760514177/outputs/gbt_full/best_gbt_model `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_test `
     gs://weather-ml-bucket-1760514177/outputs/gbt_full_evaluation
+
+# Note: The '--' must be in quotes for PowerShell
 ```
 
 **Runtime**: 10-20 minutes each
