@@ -88,7 +88,7 @@ gcloud dataproc batches submit pyspark `
     --region=asia-southeast1 `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
-    --ttl=28800s `
+    --ttl=2d `
     --batch=rf-full-$timestamp `
     '--' `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
@@ -96,7 +96,7 @@ gcloud dataproc batches submit pyspark `
     full
 
 # Note: The '--' separator must be in quotes for PowerShell
-# TTL set to 8 hours (28800s) to prevent timeout - default 4hrs is too short
+# TTL set to 2d to prevent timeout - default 4hrs is too short
 ```
 
 **Parameters**:
@@ -150,7 +150,7 @@ gcloud dataproc batches submit pyspark `
     --region=asia-southeast1 `
     --deps-bucket=weather-ml-bucket-1760514177 `
     --subnet=default `
-    --ttl=43200s `
+    --ttl=2d `
     --batch=gbt-full-$timestamp `
     '--' `
     gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
@@ -158,7 +158,7 @@ gcloud dataproc batches submit pyspark `
     full
 
 # Note: The '--' separator must be in quotes for PowerShell
-# TTL set to 12 hours (43200s) - GBT can take longer than RF
+# TTL set to 2d - GBT can take longer than RF
 ```
 
 **Parameters**:
