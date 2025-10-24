@@ -15,3 +15,7 @@ Write-Host "`n📊 Current Dataproc Batches:" -ForegroundColor Cyan
 gcloud dataproc batches list --region=asia-southeast1 --limit=5
 
 Write-Host "`n✅ Project resumed! Ready to work." -ForegroundColor Green
+
+
+# When you return to this project
+# .\resume_noaa_project.ps1
