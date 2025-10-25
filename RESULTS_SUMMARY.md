@@ -374,6 +374,62 @@ All scripts available in submission:
 
 ---
 
+## 10. Final Model Comparison & Selection
+
+### 10.1 Performance Summary Table
+
+| Model | Training Data | Train RMSE | CV RMSE | Test RMSE | Test R² | Training Time |
+|-------|--------------|------------|---------|-----------|---------|---------------|
+| Linear Regression | 8.8M (10%) | 5.56°C | N/A | 5.56°C | 0.8017 | ~10 min |
+| RF Test | 8.8M (10%) | 4.64°C | 4.65°C | N/A | N/A | ~35 min |
+| **RF Full** | **88.2M (100%)** | **4.65°C** | **4.65°C** | **4.65°C** | **0.8519** | **1.2 hrs** |
+| GBT Test | 8.8M (10%) | 4.93°C | 4.94°C | N/A | N/A | ~40 min |
+
+### 10.2 Model Selection Decision
+
+**Selected Model**: Random Forest (Simplified)  
+**Final Test Performance**: RMSE 4.65°C, R² 0.8519, MAE 3.42°C
+
+**Selection Rationale**:
+1. ✅ **Best RMSE**: 16.4% improvement over baseline (5.56°C → 4.65°C)
+2. ✅ **Perfect Generalization**: Training RMSE = Test RMSE (no overfitting)
+3. ✅ **RF > GBT**: 5.7% better performance than GBT in test mode (4.64°C vs 4.93°C)
+4. ✅ **Efficient**: Completed in 1.2 hours on standard Dataproc resources
+5. ✅ **Interpretable**: Clear feature importances aligned with meteorological knowledge
+
+### 10.3 Critical Findings
+
+**Diminishing Returns in Large-Scale Training:**
+- RF Test (10% data): 4.64°C RMSE
+- RF Full (100% data): 4.65°C RMSE  
+- **Difference**: 0.007°C (0.2% change)
+
+Using 10× more training data improved RMSE by less than 1%, demonstrating that the model had already captured the main weather patterns from the 10% sample. This is consistent with diminishing returns in large-scale ML where model capacity and inherent data noise become limiting factors.
+
+**Feature Importance Consistency:**
+- Top 3 features remained identical across RF Test and RF Full: dew_point (38%), latitude (27%), month_cos (17%)
+- Feature rankings stable across different sample sizes, confirming robust pattern discovery
+
+**Model Comparison:**
+- Random Forest consistently outperformed Gradient Boosted Trees (5.7% better RMSE)
+- Both ensemble methods significantly better than linear baseline
+- RF's parallel tree training proved more effective than GBT's sequential boosting for this task
+
+### 10.4 Performance by Temperature Range (Test Set)
+
+| Temperature Range | Count | Mean Abs Error | Performance Quality |
+|-------------------|-------|----------------|---------------------|
+| 10-20°C | 11,649,067 (31%) | 2.96°C | Excellent |
+| 20-30°C | 10,181,945 (27%) | 2.93°C | Excellent |
+| 0-10°C | 8,923,783 (24%) | 2.91°C | Excellent |
+| Below 0°C | 4,537,413 (12%) | 4.88°C | Good |
+| Above 30°C | 2,514,071 (7%) | 6.72°C | Challenging |
+
+Model excels in moderate temperatures (0-30°C) covering 81% of test data, with higher errors in extreme temperatures due to data scarcity and greater natural variability.
+
+
+---
+
 **Submitted**: November 5, 2024  
 **Course**: DSS5208 - Distributed Systems and Big Data  
 **Project**: Machine Learning on Weather Data
