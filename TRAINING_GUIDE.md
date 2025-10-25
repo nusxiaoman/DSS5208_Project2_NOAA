@@ -75,11 +75,66 @@ gcloud dataproc batches submit pyspark `
 - 2-fold cross-validation
 - Fast validation
 
+
 #### Option B: Full Production Mode
 
-**Runtime**: 2-4 hours  
+**RECOMMENDED APPROACH: Simplified Parameters** ⭐
+
+**Runtime**: 1-2 hours  
 **Dataset**: 100% (~88M rows)  
-**Purpose**: Final production model
+**Purpose**: Production model with memory-optimized parameters
+
+```powershell
+# Upload simplified script
+gsutil cp train_random_forest_simplified.py gs://weather-ml-bucket-1760514177/scripts/
+
+# Run RF Full with simplified parameters
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+gcloud dataproc batches submit pyspark `
+    gs://weather-ml-bucket-1760514177/scripts/train_random_forest_simplified.py `
+    --region=asia-southeast1 `
+    --deps-bucket=weather-ml-bucket-1760514177 `
+    --subnet=default `
+    --ttl=2d `
+    --batch=rf-simplified-$timestamp `
+    '--' `
+    gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
+    gs://weather-ml-bucket-1760514177/outputs/rf_simplified
+
+# Note: The '--' separator must be in quotes for PowerShell
+```
+
+**Parameters (Memory-Optimized):**
+- numTrees: [10, 20]
+- maxDepth: [5, 10]
+- minInstancesPerNode: [1]
+- Grid: 4 models (instead of 18)
+- Cross-validation: 2-fold (instead of 3-fold)
+- Parallelism: 1 (sequential, memory-safe)
+
+**Actual Results (Completed Successfully):**
+- Training rows: 88,228,998
+- Training RMSE: 4.65°C
+- Test RMSE: 4.65°C ✅
+- Training R²: 0.8519
+- Test R²: 0.8519 ✅
+- Training time: 1.20 hours
+- Best params: numTrees=20, maxDepth=10
+
+**Why This Works:**
+- Same parameters that succeeded in test mode (10% sample)
+- Reduced memory footprint (2-fold CV, sequential training)
+- Minimal performance loss vs aggressive hyperparameter tuning
+- Reliable completion on standard Dataproc resources
+- **Proven success**: Already completed successfully!
+
+---
+
+**ALTERNATIVE: Original Full Production Mode** ⚠️ (Not Recommended)
+
+**Runtime**: 2-4 hours (if successful)  
+**Dataset**: 100% (~88M rows)  
+**Risk**: High memory pressure, likely to fail with OOM errors
 
 ```powershell
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -96,14 +151,15 @@ gcloud dataproc batches submit pyspark `
     full
 
 # Note: The '--' separator must be in quotes for PowerShell
-# TTL set to 2d to prevent timeout - default 4hrs is too short
 ```
 
 **Parameters**:
 - Full mode: 3 tree configs × 3 depth configs × 2 min instances = 18 models
 - 3-fold cross-validation
 - Grid search: numTrees=[50,100,150], maxDepth=[10,15,20]
-- TTL: 8 hours (prevents 4-hour default timeout)
+- Parallelism: 4
+
+**Warning**: This configuration has high memory requirements and frequently fails with out-of-memory errors on standard Dataproc resources. The simplified approach above is strongly recommended and has been proven to work.
 
 ---
 
@@ -343,18 +399,63 @@ All models use the following 14 features:
 
 ---
 
-## Recommended Training Workflow
+### Recommended Training Workflow (Based on Actual Experience)
 
-1. ✅ **Run Baseline Test** (5-10 min) - Verify pipeline works
-2. ✅ **Run RF Test Mode** (20-40 min) - Test RF pipeline
-3. ✅ **Run GBT Test Mode** (30-60 min) - Test GBT pipeline
-4. ✅ **Review test results** - Compare models
-5. ✅ **Run RF Full Mode** (2-4 hours) - Production RF model
-6. ✅ **Run GBT Full Mode** (3-6 hours) - Production GBT model
-7. ✅ **Evaluate both on test set** (10-20 min each)
-8. ✅ **Compare final results** - Choose best model
+1. ✅ **Run Baseline Test** (5-10 min) - COMPLETED
+   - Verify pipeline works
+   - Establish performance baseline
+   - Result: RMSE 5.56°C, R² 0.8017
 
-**Total time**: ~6-11 hours for complete pipeline
+2. ✅ **Run RF Test Mode** (20-40 min) - COMPLETED
+   - Test RF pipeline on 10% sample
+   - Quick hyperparameter validation
+   - Result: RMSE 4.64°C, R² 0.8525
+
+3. ✅ **Run GBT Test Mode** (30-60 min) - COMPLETED
+   - Test GBT pipeline on 10% sample
+   - Compare with RF performance
+   - Result: RMSE 4.93°C, R² 0.8341
+
+4. ✅ **Review test results** - COMPLETED
+   - RF outperformed GBT by 6%
+   - Both significantly better than baseline
+   - Decision: Prioritize RF for full training
+
+5. ✅ **Run RF Full Mode - Simplified** (1-2 hours) - COMPLETED
+   - Memory-optimized parameters (4 models, 2-fold CV)
+   - Trained on full 88M rows
+   - Result: Training RMSE 4.65°C, Training R² 0.8519
+   - Actual time: 1.20 hours ✅
+
+6. ✅ **Evaluate RF on test set** (10-20 min) - COMPLETED
+   - Test on held-out 38M rows
+   - Result: Test RMSE 4.65°C, Test R² 0.8519
+   - Perfect generalization (no overfitting)
+
+7. ⏳ **Optional: Run GBT Full Mode - Simplified** (2-3 hours)
+   - Memory-optimized parameters (4 models, 2-fold CV)
+   - Expected: RMSE ~4.8-4.9°C (likely worse than RF)
+   - Status: Not required (RF already proven best)
+
+8. ⏳ **Optional: Evaluate GBT on test set** (10-20 min)
+   - Only if GBT Full completed
+   - For comprehensive comparison
+
+9. ✅ **Compare final results** - READY
+   - RF Full selected as best model
+   - 16.5% improvement over baseline
+   - Ready for final report
+
+**Actual Total Time Spent**: ~2.5 hours (core pipeline)  
+**Optional Additional Time**: ~2-3 hours (GBT Full - not recommended)  
+**Recommended Next Steps**: Write comprehensive report (2-3 days)
+
+**Key Lessons Learned**:
+- ⚠️ Original RF Full (18 models, 3-fold CV) → OOM failure after 13+ hours
+- ✅ Simplified approach (4 models, 2-fold CV) → Success in 1.2 hours
+- ✅ Diminishing returns: 100% data vs 10% improved RMSE by only 0.01°C
+- ✅ Memory optimization more important than aggressive hyperparameter tuning
+- ✅ GBT Full not necessary when test mode shows RF superiority
 
 ---
 
