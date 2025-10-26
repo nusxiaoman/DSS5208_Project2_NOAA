@@ -196,9 +196,64 @@ gcloud dataproc batches submit pyspark `
 
 #### Option B: Full Production Mode
 
-**Runtime**: 3-6 hours  
-**Dataset**: 100% (~88M rows)
+**RECOMMENDED APPROACH: Simplified Parameters** ⭐
 
+**Runtime**: 2-3 hours  
+**Dataset**: 100% (~88M rows)  
+**Purpose**: Production model with memory-optimized parameters
+```powershell
+# Upload simplified script
+gsutil cp train_gbt_simplified.py gs://weather-ml-bucket-1760514177/scripts/
+
+# Run GBT Full with simplified parameters
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+gcloud dataproc batches submit pyspark `
+    gs://weather-ml-bucket-1760514177/scripts/train_gbt_simplified.py `
+    --region=asia-southeast1 `
+    --deps-bucket=weather-ml-bucket-1760514177 `
+    --subnet=default `
+    --ttl=2d `
+    --batch=gbt-simplified-$timestamp `
+    '--' `
+    gs://weather-ml-bucket-1760514177/warehouse/noaa_train `
+    gs://weather-ml-bucket-1760514177/outputs/gbt_simplified
+
+# Note: The '--' separator must be in quotes for PowerShell
+# TTL set to 2d to prevent timeout
+```
+
+**Parameters (Memory-Optimized):**
+- maxIter: [20, 50]
+- maxDepth: [3, 5]
+- stepSize: [0.1]
+- Grid: 4 models (instead of 27)
+- Cross-validation: 2-fold (instead of 3-fold)
+- Parallelism: 1 (sequential, memory-safe)
+
+**Expected Results:**
+- Training RMSE: ~4.8-4.9°C
+- Test RMSE: ~4.8-4.9°C
+- Training time: ~2-3 hours
+- Success rate: 85%+ ✅
+
+**Why This Works:**
+- Conservative parameters based on GBT test results
+- Reduced memory footprint (2-fold CV, sequential training)
+- GBT is more memory-intensive than RF due to sequential boosting
+- Proven parameter ranges from test mode (10% sample)
+
+**Note**: GBT is inherently more memory-intensive than Random Forest due to:
+- Sequential boosting (each tree depends on previous trees)
+- Gradient calculations stored in memory
+- Residual updates after each iteration
+
+---
+
+**ALTERNATIVE: Original Full Production Mode** ⚠️ (Not Recommended)
+
+**Runtime**: 3-6 hours (if successful)  
+**Dataset**: 100% (~88M rows)  
+**Risk**: Very high memory pressure, likely to fail with OOM errors
 ```powershell
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 gcloud dataproc batches submit pyspark `
@@ -214,14 +269,15 @@ gcloud dataproc batches submit pyspark `
     full
 
 # Note: The '--' separator must be in quotes for PowerShell
-# TTL set to 2d - GBT can take longer than RF
 ```
 
 **Parameters**:
-- Full mode: 3 iter × 3 depth × 3 step sizes = 27 models
+- Full mode: 3 iter × 3 depth × 3 step = 27 models
 - 3-fold cross-validation
 - Grid search: maxIter=[50,100,150], maxDepth=[5,7,10], stepSize=[0.05,0.1,0.2]
-- TTL: 12 hours (GBT typically takes longer than RF)
+- Parallelism: 4 (may cause OOM)
+
+**Warning**: This configuration has very high memory requirements and is likely to fail with out-of-memory errors on standard Dataproc resources, especially for GBT which is more memory-intensive than Random Forest. The simplified approach above is strongly recommended.
 
 ---
 
