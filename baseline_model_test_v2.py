@@ -89,19 +89,39 @@ def main():
     print(f"Train: {train_data.count():,} rows")
     print(f"Test: {test_data.count():,} rows")
     
+    # Check for features that are 100% NULL (Imputer can't handle these)
+    print("\nChecking for completely NULL features...")
+    from pyspark.sql.functions import count as spark_count, when
+    
+    valid_features = []
+    excluded_features = []
+    
+    for feat in feature_cols:
+        non_null_count = train_data.select(spark_count(when(col(feat).isNotNull(), 1))).first()[0]
+        if non_null_count > 0:
+            valid_features.append(feat)
+        else:
+            excluded_features.append(feat)
+            print(f"  ⚠ Excluding {feat} (100% NULL)")
+    
+    if excluded_features:
+        print(f"\nUsing {len(valid_features)} features (excluded {len(excluded_features)} all-NULL features)")
+    else:
+        print(f"\nAll {len(valid_features)} features have non-NULL values")
+    
     # Impute missing values with median (lag features have many nulls)
     from pyspark.ml.feature import Imputer
     from pyspark.ml import Pipeline
     
     print("\nImputing missing values with median...")
     imputer = Imputer(
-        inputCols=feature_cols,
-        outputCols=[f"{feat}_imputed" for feat in feature_cols],
+        inputCols=valid_features,
+        outputCols=[f"{feat}_imputed" for feat in valid_features],
         strategy='median'
     )
     
     # Assemble features
-    imputed_features = [f"{feat}_imputed" for feat in feature_cols]
+    imputed_features = [f"{feat}_imputed" for feat in valid_features]
     assembler = VectorAssembler(
         inputCols=imputed_features,
         outputCol="features"
@@ -226,7 +246,7 @@ def main():
     print("=" * 80)
     print(f"\nResults Summary:")
     print(f"  Model: Linear Regression (Baseline V2)")
-    print(f"  Features: 33 (V1 had 14)")
+    print(f"  Features: {len(valid_features)} (target: 33, excluded {len(excluded_features)} all-NULL)")
     print(f"  Test RMSE: {test_rmse:.4f}°C")
     print(f"  Test R²: {test_r2:.4f}")
     print(f"  Test MAE: {test_mae:.4f}°C")
