@@ -73,6 +73,11 @@ def main():
     # Read data
     print(f"\nReading: {input_path}")
     df = spark.read.csv(input_path, header=True, inferSchema=False)
+
+    print("\nAvailable columns in CSV:")
+    for col in sorted(df.columns):
+        if col.startswith(('GA', 'AW', 'CIG', 'OC')):
+            print(f"  {col}")
     
     total_rows = df.count()
     print(f"Total rows: {total_rows:,}")
