@@ -1,7 +1,7 @@
 """
-Baseline Model Test - Simple Linear Regression
-Quick test to verify the ML pipeline works with cleaned data
-Uses a small sample for fast validation
+Baseline Model Test V2 - Simple Linear Regression
+Tests ML pipeline with V2 cleaned data (35 features)
+Uses 10% sample for fast validation
 """
 
 from pyspark.sql import SparkSession
@@ -14,17 +14,19 @@ import sys
 def main():
     # Initialize Spark
     spark = SparkSession.builder \
-        .appName("NOAA Baseline Model Test") \
+        .appName("NOAA Baseline Model Test V2") \
         .config("spark.sql.adaptive.enabled", "true") \
         .getOrCreate()
     
-    # Paths
-    train_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_train"
-    test_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_test"
-    output_path = "gs://weather-ml-bucket-1760514177/outputs/baseline_test"
+    # Paths - V2 data
+    train_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_train_v2"
+    test_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_test_v2"
+    output_path = "gs://weather-ml-bucket-1760514177/outputs/baseline_test_v2"
     
     print("=" * 80)
-    print("NOAA Weather Prediction - Baseline Model Test")
+    print("NOAA Weather Prediction - Baseline Model Test V2")
+    print("=" * 80)
+    print("Using V2 cleaned data with 33 ML features")
     print("=" * 80)
     
     # Read data
@@ -45,15 +47,37 @@ def main():
     print(f"Train sample: {train_count:,} rows")
     print(f"Test sample: {test_count:,} rows")
     
-    # Select features (only complete cases for baseline)
-    print("\nPreparing features...")
+    # Select features - V2 has 33 ML features
+    print("\nPreparing V2 features (33 total)...")
     feature_cols = [
+        # Geographic (3)
         'latitude', 'longitude', 'elevation',
+        # Basic weather (6)
         'dew_point', 'sea_level_pressure', 'visibility',
-        'wind_speed', 'wind_dir_sin', 'wind_dir_cos',
+        'wind_speed', 'precipitation', 'wind_gust',
+        # Cyclical encodings (8)
         'hour_sin', 'hour_cos', 'month_sin', 'month_cos',
-        'precipitation'
+        'day_of_year_sin', 'day_of_year_cos',
+        'wind_dir_sin', 'wind_dir_cos',
+        # Weather conditions (4)
+        'is_raining', 'is_snowing', 'is_foggy', 'is_thunderstorm',
+        # Station statistics (3)
+        'station_avg_temp', 'station_avg_dew', 'station_avg_pressure',
+        # Lag features (9)
+        'temp_lag_1h', 'temp_lag_2h', 'temp_lag_3h',
+        'pressure_lag_1h', 'dew_lag_1h',
+        'temp_rolling_3h', 'pressure_rolling_3h',
+        'temp_change_1h', 'pressure_change_1h'
     ]
+    
+    print(f"Total features: {len(feature_cols)}")
+    print("Categories:")
+    print("  Geographic: 3")
+    print("  Basic weather: 6")
+    print("  Cyclical encodings: 8")
+    print("  Weather conditions: 4")
+    print("  Station statistics: 3")
+    print("  Lag features: 9")
     
     # Remove rows with any missing values for baseline (simple approach)
     train_clean = train_sample.na.drop(subset=feature_cols + ['temperature'])
@@ -155,7 +179,7 @@ def main():
     print(f"\nSaving results to: {output_path}")
     
     results_data = [
-        ("Linear Regression Baseline", 
+        ("Linear Regression Baseline V2", 
          train_count, test_count, 
          float(train_rmse), float(test_rmse),
          float(train_r2), float(test_r2),
@@ -175,16 +199,18 @@ def main():
     test_predictions.limit(1000).write.mode('overwrite').parquet(output_path + "/sample_predictions")
     
     print("\n" + "=" * 80)
-    print("✓ BASELINE MODEL TEST COMPLETED!")
+    print("✓ BASELINE MODEL TEST V2 COMPLETED!")
     print("=" * 80)
     print(f"\nResults Summary:")
-    print(f"  Model: Linear Regression (Baseline)")
+    print(f"  Model: Linear Regression (Baseline V2)")
+    print(f"  Features: 33 (V1 had 14)")
     print(f"  Test RMSE: {test_rmse:.4f}°C")
     print(f"  Test R²: {test_r2:.4f}")
     print(f"  Test MAE: {test_mae:.4f}°C")
     print(f"\nOutput location: {output_path}")
     print(f"\n{'='*80}")
-    print("Pipeline verified! Ready for advanced models (Random Forest, GBT)")
+    print("V2 Pipeline verified! Ready for RF and GBT with enhanced features")
+    print("Expected improvement from lag features!")
     print("="*80)
     
     spark.stop()
