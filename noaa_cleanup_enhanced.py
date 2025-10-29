@@ -1,9 +1,10 @@
 """
-NOAA Weather Data Enhanced Cleanup V2 (Simplified)
-Based on noaa_cleanup_full.py with focused additions:
-- Weather conditions (AW fields: rain, snow, fog, thunderstorm)
-- Improved NULL value handling with median imputation
-- Random split compatible (no lag features needed)
+NOAA Weather Data Enhanced Cleanup V2 - COMPLETE
+Includes ALL available weather fields:
+- GA1/GA2/GA3: Cloud cover and height
+- CIG: Ceiling height
+- OC1: Wind gust
+- Median imputation for NULL values
 """
 
 from pyspark.sql import SparkSession
@@ -51,9 +52,34 @@ def parse_precipitation(precip_col):
         .otherwise(split(col(precip_col), ',').getItem(1).cast(DoubleType()) / 10.0)
     )
 
+def parse_cloud_cover(ga_col):
+    """Parse GA cloud: '08,1,02,1,00800,1' -> coverage_code, base_height"""
+    parts = split(col(ga_col), ',')
+    # Coverage code: 0=clear, 1-8=coverage level
+    coverage = when(col(ga_col).isNull() | parts.getItem(0).contains('99'), None) \
+        .otherwise(parts.getItem(0).cast(IntegerType()))
+    # Base height in meters
+    height = when(col(ga_col).isNull() | parts.getItem(4).contains('99999'), None) \
+        .otherwise(parts.getItem(4).cast(DoubleType()))
+    return coverage, height
+
+def parse_ceiling(cig_str):
+    """Parse CIG: '00800,1,9,9' -> 800 meters"""
+    return (
+        when(col(cig_str).isNull() | (col(cig_str).contains('99999')), None)
+        .otherwise(split(col(cig_str), ',').getItem(0).cast(DoubleType()))
+    )
+
+def parse_wind_gust(oc1_str):
+    """Parse OC1: '120,1,0069,1' -> 6.9 m/s"""
+    return (
+        when(col(oc1_str).isNull() | (col(oc1_str).contains('9999')), None)
+        .otherwise(split(col(oc1_str), ',').getItem(2).cast(DoubleType()) / 10.0)
+    )
+
 def main():
     spark = SparkSession.builder \
-        .appName("NOAA Enhanced Cleanup V2 - Simplified") \
+        .appName("NOAA Enhanced Cleanup V2 - Complete") \
         .config("spark.sql.adaptive.enabled", "true") \
         .getOrCreate()
     
@@ -62,31 +88,35 @@ def main():
     output_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_cleaned_v2"
     
     print("=" * 80)
-    print("NOAA ENHANCED DATA CLEANUP V2 (Simplified)")
+    print("NOAA ENHANCED DATA CLEANUP V2 - COMPLETE VERSION")
     print("=" * 80)
-    print("New features vs V1:")
-    print("  - Weather conditions (rain/snow/fog/storm) from AW fields")
-    print("  - Improved NULL handling with median imputation")
-    print("  - Optimized for random train/test split")
+    print("New features:")
+    print("  - Cloud cover (GA1/GA2/GA3)")
+    print("  - Ceiling height (CIG)")
+    print("  - Wind gust (OC1)")
+    print("  - Median imputation for NULL values")
     print("=" * 80)
     
     # Read data
     print(f"\nReading: {input_path}")
     df = spark.read.csv(input_path, header=True, inferSchema=False)
-
-    print("\nAvailable columns in CSV:")
-    for col in sorted(df.columns):
-        if col.startswith(('GA', 'AW', 'CIG', 'OC')):
-            print(f"  {col}")
     
     total_rows = df.count()
     print(f"Total rows: {total_rows:,}")
     
     available_cols = df.columns
-    has_aw = any(c.startswith('AW') for c in available_cols)
+    has_ga1 = 'GA1' in available_cols
+    has_ga2 = 'GA2' in available_cols
+    has_ga3 = 'GA3' in available_cols
+    has_cig = 'CIG' in available_cols
+    has_oc1 = 'OC1' in available_cols
     
-    print(f"\nOptional fields:")
-    print(f"  AW (weather): {'YES' if has_aw else 'NO'}")
+    print(f"\nOptional fields detected:")
+    print(f"  GA1 (cloud layer 1): {'YES' if has_ga1 else 'NO'}")
+    print(f"  GA2 (cloud layer 2): {'YES' if has_ga2 else 'NO'}")
+    print(f"  GA3 (cloud layer 3): {'YES' if has_ga3 else 'NO'}")
+    print(f"  CIG (ceiling): {'YES' if has_cig else 'NO'}")
+    print(f"  OC1 (wind gust): {'YES' if has_oc1 else 'NO'}")
     
     # ==================== Basic Parsing ====================
     print("\n" + "=" * 80)
@@ -100,7 +130,8 @@ def main():
         if p in available_cols:
             precip_sum = precip_sum + parse_precipitation(p)
     
-    df_clean = df.select(
+    # Build select list
+    select_cols = [
         col('STATION'),
         to_timestamp(col('DATE')).alias('timestamp'),
         col('LATITUDE').cast(DoubleType()).alias('latitude'),
@@ -113,9 +144,33 @@ def main():
         parse_visibility('VIS').alias('visibility'),
         wind_direction.alias('wind_direction'),
         wind_speed.alias('wind_speed'),
-        precip_sum.alias('precipitation'),
-        *[col(c) for c in ['AW1', 'AW2', 'AW3'] if c in available_cols]
-    )
+        precip_sum.alias('precipitation')
+    ]
+    
+    # Add cloud features
+    if has_ga1:
+        ga1_coverage, ga1_height = parse_cloud_cover('GA1')
+        select_cols.extend([
+            ga1_coverage.alias('cloud_cover_1'),
+            ga1_height.alias('cloud_base_height_1')
+        ])
+    
+    if has_ga2:
+        ga2_coverage, ga2_height = parse_cloud_cover('GA2')
+        select_cols.extend([
+            ga2_coverage.alias('cloud_cover_2'),
+            ga2_height.alias('cloud_base_height_2')
+        ])
+    
+    # Add ceiling
+    if has_cig:
+        select_cols.append(parse_ceiling('CIG').alias('ceiling_height'))
+    
+    # Add wind gust
+    if has_oc1:
+        select_cols.append(parse_wind_gust('OC1').alias('wind_gust'))
+    
+    df_clean = df.select(*select_cols)
     
     print("DONE - Basic features parsed")
     
@@ -143,50 +198,9 @@ def main():
     
     print("DONE - Temporal + wind direction encoding")
     
-    # ==================== Weather Conditions ====================
-    print("\n" + "=" * 80)
-    print("PHASE 3: Weather Conditions")
-    print("=" * 80)
-    
-    if has_aw:
-        for col_name in ['AW1', 'AW2', 'AW3']:
-            if col_name not in df_clean.columns:
-                df_clean = df_clean.withColumn(col_name, lit(None))
-        
-        df_clean = df_clean \
-            .withColumn('is_raining',
-                when((col('AW1').rlike('RA|DZ|SHRA|TSRA')) |
-                     (col('AW2').rlike('RA|DZ|SHRA|TSRA')) |
-                     (col('AW3').rlike('RA|DZ|SHRA|TSRA')), 1).otherwise(0)) \
-            .withColumn('is_snowing',
-                when((col('AW1').rlike('SN|SG|IC|PE|PL')) |
-                     (col('AW2').rlike('SN|SG|IC|PE|PL')) |
-                     (col('AW3').rlike('SN|SG|IC|PE|PL')), 1).otherwise(0)) \
-            .withColumn('is_foggy',
-                when((col('AW1').rlike('FG|BR|MIFG|BCFG')) |
-                     (col('AW2').rlike('FG|BR|MIFG|BCFG')) |
-                     (col('AW3').rlike('FG|BR|MIFG|BCFG')), 1).otherwise(0)) \
-            .withColumn('is_thunderstorm',
-                when((col('AW1').rlike('TS')) |
-                     (col('AW2').rlike('TS')) |
-                     (col('AW3').rlike('TS')), 1).otherwise(0))
-        print("DONE - Weather flags created from AW fields")
-    else:
-        df_clean = df_clean \
-            .withColumn('is_raining', lit(0)) \
-            .withColumn('is_snowing', lit(0)) \
-            .withColumn('is_foggy', lit(0)) \
-            .withColumn('is_thunderstorm', lit(0))
-        print("WARNING - No AW fields found, using placeholder 0 values")
-    
-    # Drop raw AW fields
-    cols_to_drop = [c for c in ['AW1', 'AW2', 'AW3'] if c in df_clean.columns]
-    if cols_to_drop:
-        df_clean = df_clean.drop(*cols_to_drop)
-    
     # ==================== Quality Filters ====================
     print("\n" + "=" * 80)
-    print("PHASE 4: Quality Filtering")
+    print("PHASE 3: Quality Filtering")
     print("=" * 80)
     
     df_clean = df_clean.filter(col('temperature').isNotNull())
@@ -203,10 +217,10 @@ def main():
     
     # ==================== NULL Value Imputation ====================
     print("\n" + "=" * 80)
-    print("PHASE 5: NULL Value Handling")
+    print("PHASE 4: NULL Value Handling")
     print("=" * 80)
     
-    # Calculate medians for key features using approxQuantile
+    # Calculate medians for key features
     print("Calculating medians for imputation...")
     
     median_slp = df_clean.approxQuantile('sea_level_pressure', [0.5], 0.01)[0]
@@ -218,7 +232,7 @@ def main():
     print(f"  Wind speed: {median_wind_speed:.1f} m/s")
     print(f"  Visibility: {median_visibility:.0f} m")
     
-    # Apply median imputation for critical features
+    # Apply median imputation
     df_clean = df_clean \
         .withColumn('sea_level_pressure',
             when(col('sea_level_pressure').isNull(), median_slp)
@@ -230,44 +244,59 @@ def main():
             when(col('visibility').isNull(), median_visibility)
             .otherwise(col('visibility')))
     
-    # For wind_direction, keep NULL (cyclical encoding handles it)
-    # For dew_point, keep NULL (not critical, ML can handle it)
-    # For precipitation, already defaulted to 0.0
-    
     print("DONE - Median imputation applied")
     
-    # Count remaining NULLs
-    null_counts = df_clean.agg(
-        (expr('sum(case when dew_point is null then 1 else 0 end)') / rows_after_filter * 100).alias('dew_point_null_pct'),
-        (expr('sum(case when wind_direction is null then 1 else 0 end)') / rows_after_filter * 100).alias('wind_dir_null_pct')
-    ).collect()[0]
+    # Count remaining NULLs for optional features
+    null_checks = []
+    null_checks.append("sum(case when dew_point is null then 1 else 0 end) as dew_null")
+    null_checks.append("sum(case when wind_direction is null then 1 else 0 end) as wind_dir_null")
+    
+    if has_ga1:
+        null_checks.append("sum(case when cloud_cover_1 is null then 1 else 0 end) as cloud1_null")
+    if has_cig:
+        null_checks.append("sum(case when ceiling_height is null then 1 else 0 end) as ceiling_null")
+    if has_oc1:
+        null_checks.append("sum(case when wind_gust is null then 1 else 0 end) as gust_null")
+    
+    null_counts = df_clean.selectExpr(*null_checks).collect()[0]
     
     print(f"\nRemaining NULL rates:")
-    print(f"  Dew point: {null_counts['dew_point_null_pct']:.1f}%")
-    print(f"  Wind direction: {null_counts['wind_dir_null_pct']:.1f}%")
+    print(f"  Dew point: {null_counts['dew_null']/rows_after_filter*100:.1f}%")
+    print(f"  Wind direction: {null_counts['wind_dir_null']/rows_after_filter*100:.1f}%")
+    if has_ga1:
+        print(f"  Cloud cover: {null_counts['cloud1_null']/rows_after_filter*100:.1f}%")
+    if has_cig:
+        print(f"  Ceiling: {null_counts['ceiling_null']/rows_after_filter*100:.1f}%")
+    if has_oc1:
+        print(f"  Wind gust: {null_counts['gust_null']/rows_after_filter*100:.1f}%")
     
     # ==================== Summary ====================
     print("\n" + "=" * 80)
     print("FEATURE SUMMARY")
     print("=" * 80)
     
-    features = {
+    feature_count = {
         "Geographic": 3,
         "Basic Weather": 7,
-        "Temporal": 6,
-        "Weather Conditions": 4
+        "Temporal": 6
     }
     
-    total = sum(features.values())
+    if has_ga1:
+        feature_count["Cloud (GA1)"] = 2
+    if has_ga2:
+        feature_count["Cloud (GA2)"] = 2
+    if has_cig:
+        feature_count["Ceiling (CIG)"] = 1
+    if has_oc1:
+        feature_count["Wind Gust (OC1)"] = 1
+    
+    total_features = sum(feature_count.values())
     print("\nFeature breakdown:")
-    for cat, count in features.items():
+    for cat, count in feature_count.items():
         print(f"  {cat}: {count}")
     print(f"  " + "-"*30)
-    print(f"  TOTAL: {total} features")
-    print(f"\nChanges from V1 (21 features):")
-    print(f"  + Weather conditions (4 new features)")
-    print(f"  + Median imputation for NULL values")
-    print(f"  - Removed: lag features, station stats, enhanced temporal encoding")
+    print(f"  TOTAL: {total_features} features")
+    print(f"\nNew features vs V1 (21 features): +{total_features - 21}")
     
     # ==================== Save ====================
     print("\n" + "=" * 80)
@@ -280,9 +309,10 @@ def main():
     print("\n" + "=" * 80)
     print("COMPLETED SUCCESSFULLY!")
     print("=" * 80)
-    print(f"Total features: {total}")
+    print(f"Total features: {total_features}")
     print(f"Total rows: {rows_after_filter:,}")
     print(f"\nNEXT STEP: Random split (70/30) and train models")
+    print(f"Expected improvement: Better than V1 with cloud + gust features!")
     
     df_clean.unpersist()
     spark.stop()
