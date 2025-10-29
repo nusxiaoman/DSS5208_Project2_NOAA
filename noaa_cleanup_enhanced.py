@@ -105,6 +105,13 @@ def main():
     print(f"Total rows: {total_rows:,}")
     
     available_cols = df.columns
+
+    # DEBUG: Print actual column names as Spark sees them
+    print("\nDEBUG - All columns as Spark reads them:")
+    for i, c in enumerate(available_cols):
+        if any(x in c.upper() for x in ['GA', 'AW', 'CIG', 'OC']):
+            print(f"  [{i}] '{c}' (len={len(c)})")
+            
     has_ga1 = 'GA1' in available_cols
     has_ga2 = 'GA2' in available_cols
     has_ga3 = 'GA3' in available_cols
