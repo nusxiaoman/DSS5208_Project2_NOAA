@@ -111,7 +111,7 @@ def main():
     for i, c in enumerate(available_cols):
         if any(x in c.upper() for x in ['GA', 'AW', 'CIG', 'OC']):
             print(f"  [{i}] '{c}' (len={len(c)})")
-            
+
     has_ga1 = 'GA1' in available_cols
     has_ga2 = 'GA2' in available_cols
     has_ga3 = 'GA3' in available_cols
@@ -311,7 +311,7 @@ def main():
     print("=" * 80)
     
     print(f"Output: {output_path}")
-    df_clean.write.mode('overwrite').partitionBy('year', 'month').parquet(output_path)
+    df_clean.write.mode('overwrite').parquet(output_path)
     
     print("\n" + "=" * 80)
     print("COMPLETED SUCCESSFULLY!")
