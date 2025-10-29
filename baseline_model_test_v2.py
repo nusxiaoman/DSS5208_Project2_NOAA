@@ -1,6 +1,6 @@
 """
 Baseline Model Test V2 - Simple Linear Regression
-Tests ML pipeline with V2 cleaned data (35 features)
+Tests ML pipeline with V2 cleaned data (30 features - no station stats)
 Uses 10% sample for fast validation
 """
 
@@ -26,7 +26,7 @@ def main():
     print("=" * 80)
     print("NOAA Weather Prediction - Baseline Model Test V2")
     print("=" * 80)
-    print("Using V2 cleaned data with 33 ML features")
+    print("Using V2 cleaned data with 30 ML features (no station stats)")
     print("=" * 80)
     
     # Read data
@@ -47,8 +47,8 @@ def main():
     print(f"Train sample: {train_count:,} rows")
     print(f"Test sample: {test_count:,} rows")
     
-    # Select features - V2 has 33 ML features
-    print("\nPreparing V2 features (33 total)...")
+    # Select features - V2 has 30 ML features (removed 3 station stats due to data leakage)
+    print("\nPreparing V2 features (30 total - excluded station stats)...")
     feature_cols = [
         # Geographic (3)
         'latitude', 'longitude', 'elevation',
@@ -61,9 +61,7 @@ def main():
         'wind_dir_sin', 'wind_dir_cos',
         # Weather conditions (4)
         'is_raining', 'is_snowing', 'is_foggy', 'is_thunderstorm',
-        # Station statistics (3)
-        'station_avg_temp', 'station_avg_dew', 'station_avg_pressure',
-        # Lag features (9)
+        # Lag features (9) - CRITICAL for performance
         'temp_lag_1h', 'temp_lag_2h', 'temp_lag_3h',
         'pressure_lag_1h', 'dew_lag_1h',
         'temp_rolling_3h', 'pressure_rolling_3h',
@@ -76,8 +74,8 @@ def main():
     print("  Basic weather: 6")
     print("  Cyclical encodings: 8")
     print("  Weather conditions: 4")
-    print("  Station statistics: 3")
     print("  Lag features: 9")
+    print("  ⚠ REMOVED station_avg_* (3) - data leakage!")
     
     # Prepare data - filter only null temperatures, keep other nulls
     train_data = train_sample.select(*feature_cols, col('temperature').alias('label')) \
