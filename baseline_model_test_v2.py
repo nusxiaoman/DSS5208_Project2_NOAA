@@ -79,22 +79,45 @@ def main():
     print("  Station statistics: 3")
     print("  Lag features: 9")
     
-    # Remove rows with any missing values for baseline (simple approach)
-    train_clean = train_sample.na.drop(subset=feature_cols + ['temperature'])
-    test_clean = test_sample.na.drop(subset=feature_cols + ['temperature'])
+    # Prepare data - filter only null temperatures, keep other nulls
+    train_data = train_sample.select(*feature_cols, col('temperature').alias('label')) \
+        .filter(col('label').isNotNull())
+    test_data = test_sample.select(*feature_cols, col('temperature').alias('label')) \
+        .filter(col('label').isNotNull())
     
-    print(f"\nAfter removing missing values:")
-    print(f"Train: {train_clean.count():,} rows")
-    print(f"Test: {test_clean.count():,} rows")
+    print(f"\nAfter filtering null temperatures:")
+    print(f"Train: {train_data.count():,} rows")
+    print(f"Test: {test_data.count():,} rows")
+    
+    # Impute missing values with median (lag features have many nulls)
+    from pyspark.ml.feature import Imputer
+    from pyspark.ml import Pipeline
+    
+    print("\nImputing missing values with median...")
+    imputer = Imputer(
+        inputCols=feature_cols,
+        outputCols=[f"{feat}_imputed" for feat in feature_cols],
+        strategy='median'
+    )
     
     # Assemble features
+    imputed_features = [f"{feat}_imputed" for feat in feature_cols]
     assembler = VectorAssembler(
-        inputCols=feature_cols,
+        inputCols=imputed_features,
         outputCol="features"
     )
     
-    train_assembled = assembler.transform(train_clean).select('features', col('temperature').alias('label'))
-    test_assembled = assembler.transform(test_clean).select('features', col('temperature').alias('label'))
+    # Create pipeline
+    pipeline = Pipeline(stages=[imputer, assembler])
+    
+    # Fit and transform
+    pipeline_model = pipeline.fit(train_data)
+    train_assembled = pipeline_model.transform(train_data).select('features', 'label')
+    test_assembled = pipeline_model.transform(test_data).select('features', 'label')
+    
+    print(f"After imputation:")
+    print(f"Train: {train_assembled.count():,} rows")
+    print(f"Test: {test_assembled.count():,} rows")
     
     # Train simple Linear Regression
     print("\n" + "=" * 80)
