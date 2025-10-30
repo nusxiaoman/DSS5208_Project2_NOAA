@@ -67,6 +67,20 @@ project/
 **Temporal** (4): hour_sin/cos, month_sin/cos (cyclical encoding)  
 **Target**: temperature (°C)
 
+### Feature Selection
+
+These 14 features represent **all essential, available meteorological information** from the NOAA dataset. We explored alternative feature sets:
+
+- **V1**: 32 features with temporal lag features (temp_lag_1h, etc.) - showed data leakage with random split (0.46°C RMSE, unrealistic)
+- **V2**: 15 features adding ceiling_height - performed worse (6.85°C) due to 51% NULL values
+
+**Key findings:**
+- Additional available fields (cloud cover, weather observations, wind gust) have 50-100% NULL rates
+- Our 14-feature baseline captures all usable information without data leakage
+- More features ≠ better performance when they add noise rather than signal
+
+**See [FEATURE_SELECTION_COMPARISON.md](FEATURE_SELECTION_COMPARISON.md) for detailed analysis of alternative feature sets and data leakage discussion.**
+
 ---
 
 ## 🤖 Models & Results
