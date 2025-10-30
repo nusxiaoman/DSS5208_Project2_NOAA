@@ -23,26 +23,45 @@ This project processes **130 million** hourly weather observations from NOAA's 2
 
 ```
 project/
-├── README.md                          # This file
-├── TRAINING_GUIDE.md                  # Step-by-step training instructions
-├── RESULTS_SUMMARY.md                 # Complete results and analysis
+├── README.md                                  # Project overview and quick start
+├── FEATURE_SELECTION_COMPARISON.md            # Feature engineering analysis (V0/V1/V2)
+├── DATA_CLEANUP_README.md                     # Data cleaning documentation
+├── RESULTS_SUMMARY.md                         # Complete results and analysis
+├── TRAINING_GUIDE.md                          # Step-by-step training instructions
+├── QUICK_REFERENCE.md                         # Command reference guide
 │
-├── scripts/
-│   ├── noaa_cleanup_full.py           # Data cleaning (45 min)
-│   ├── train_test_split.py            # 70/30 split (20 min)
-│   ├── baseline_model_test.py         # Linear Regression baseline (10 min)
-│   ├── train_random_forest_simplified.py  # RF training (1.2 hrs) ✓
-│   ├── train_gbt.py                   # GBT training
-│   ├── evaluate_model.py              # Test set evaluation (15 min)
-│   └── compare_models.py              # Model comparison (5 min)
+├── Main Pipeline Scripts (Deliverables)
+│   ├── noaa_cleanup_full.py                   # Data cleaning (45 min)
+│   ├── train_test_split.py                    # 70/30 split (20 min)
+│   ├── baseline_model_test.py                 # Linear Regression baseline (10 min)
+│   ├── train_random_forest_simplified.py      # RF training (1.2 hrs) ✓ BEST
+│   ├── train_gbt_simplified.py                # GBT training (1.2 hrs)
+│   ├── evaluate_model.py                      # Test set evaluation (15 min)
+│   └── compare_models.py                      # Model comparison (5 min)
 │
-└── outputs/ (on GCS)
-    ├── baseline_test/                 # Baseline metrics
-    ├── rf_test/                       # RF 10% sample results
-    ├── rf_simplified/                 # RF full model ✓ BEST
-    ├── rf_simplified_evaluation/      # Test set results ✓
-    └── gbt_test/                      # GBT 10% sample results
+├── Alternative Implementations (Reference)
+│   ├── train_random_forest.py                 # RF original version
+│   └── train_gbt.py                           # GBT original version
+│
+├── script_for_trial/                          # Experimental scripts (not in pipeline)
+│   ├── inspect_data.py
+│   ├── inspect_data_v2.py
+│   ├── noaa_cleanup_test.py
+│   ├── train_random_forest_final.py
+│   └── train_random_forest_optimized.py
+│
+└── Outputs (on Google Cloud Storage)
+    ├── gs://.../warehouse/noaa_clean_std/     # Cleaned data (1.2 GiB)
+    ├── gs://.../warehouse/noaa_train/         # Training set (70%)
+    ├── gs://.../warehouse/noaa_test/          # Test set (30%)
+    ├── gs://.../outputs/baseline_test/        # Baseline results
+    ├── gs://.../outputs/rf_simplified/        # RF model ✓ BEST
+    ├── gs://.../outputs/rf_simplified_evaluation/  # Test evaluation
+    └── gs://.../outputs/gbt_simplified/       # GBT model
 ```
+
+**Note:** Local folders (`data/`, `num_feature_15/`, `num_feature_7/`, `.vscode/`) contain experimental work and development files, not part of the final submission.
+
 
 ---
 
@@ -59,6 +78,7 @@ project/
 | Cleaned size | 111MB (Parquet) |
 | Training set | 88,228,998 rows (70%) |
 | Test set | 37,806,279 rows (30%) |
+
 
 ### Features (14 Total)
 
