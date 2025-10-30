@@ -318,4 +318,4 @@ This project demonstrates:
 **Project Complete!** 🎉  
 **Last Updated**: October 26, 2024  
 **Version**: 2.0 - Final  
-**Course**: DSS5208 - Distributed Systems and Big Data
+**Course**: DSS5208 - Scalable Distributed Computing for Data Science
