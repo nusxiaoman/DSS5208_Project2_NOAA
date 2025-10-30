@@ -186,7 +186,6 @@ gcloud config set project distributed-map-475111-h2
 gcloud config set dataproc/region asia-southeast1
 $env:BUCKET = "weather-ml-bucket-1760514177"
 ```
-
 ### Complete Pipeline (Recommended Order)
 
 ```powershell
@@ -211,7 +210,24 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=$env:BUCKET `
     --subnet=default
 
-# 4. RF Simplified (1-2 hrs) ✓ DONE - BEST MODEL
+# 4a. RF Test Mode (10% sample, 35 min) ✓ DONE
+gcloud dataproc batches submit pyspark `
+    gs://$env:BUCKET/scripts/train_random_forest.py `
+    --region=asia-southeast1 `
+    --deps-bucket=$env:BUCKET `
+    --subnet=default
+
+# 4b. GBT Test Mode (10% sample, 40 min) ✓ DONE
+gcloud dataproc batches submit pyspark `
+    gs://$env:BUCKET/scripts/train_gbt.py `
+    --region=asia-southeast1 `
+    --deps-bucket=$env:BUCKET `
+    --subnet=default
+
+# Result: RF outperformed GBT → Proceed with RF full training only
+
+# 5. RF Full Mode - Simplified (100%, 1-2 hrs) ✓ DONE - BEST MODEL
+# Modified version to handle memory constraints in Dataproc serverless
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/train_random_forest_simplified.py `
     --region=asia-southeast1 `
@@ -221,7 +237,7 @@ gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/warehouse/noaa_train `
     gs://$env:BUCKET/outputs/rf_simplified
 
-# 5. Evaluate RF on Test Set (15 min) ✓ DONE
+# 6. Evaluate RF on Test Set (15 min) ✓ DONE
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/evaluate_model.py `
     --region=asia-southeast1 `
@@ -232,7 +248,7 @@ gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/warehouse/noaa_test `
     gs://$env:BUCKET/outputs/rf_simplified_evaluation
 
-# 6. Compare Models (5 min) ✓ DONE
+# 7. Compare Models (5 min) ✓ DONE
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/compare_models.py `
     --region=asia-southeast1 `
@@ -240,7 +256,7 @@ gcloud dataproc batches submit pyspark `
     --subnet=default
 ```
 
-**See [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for detailed instructions.**
+**Note:** GBT simplified version (`train_gbt_simplified.py`) was prepared but not executed since RF already achieved optimal performance. See [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for detailed instructions and [RESULTS_SUMMARY.md](RESULTS_SUMMARY.md) for complete analysis.
 
 ---
 
@@ -318,4 +334,4 @@ This project demonstrates:
 **Project Complete!** 🎉  
 **Last Updated**: October 26, 2024  
 **Version**: 2.0 - Final  
-**Course**: DSS5208 - Scalable Distributed Computing for Data Science
+**Course**: DSS5208 - Distributed Systems and Big Data
