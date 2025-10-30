@@ -1,0 +1,132 @@
+# AI Communication Log - DSS5208 Project 2
+
+**Project:** NOAA Weather Temperature Prediction  
+**AI Assistant:** Claude & ChatGPT 
+**Date Range:** October 21-30, 2025
+
+---
+
+## Summary of AI Usage
+
+This document summarizes my interactions with Claude and ChatGPT AI during the development of this project. AI was used for code development, debugging, and understanding best practices in distributed machine learning.
+
+---
+
+## Key Topics Discussed
+
+### 1. Data Cleaning Pipeline 
+**Problem:** Processing 130M rows of NOAA weather data with complex CSV format  
+**AI Assistance:**
+- Helped parse NOAA ISD format fields (temperature, wind, pressure)
+- Suggested cyclical encoding for temporal features (hour_sin/cos, month_sin/cos)
+- Debugged NULL value handling strategies
+
+**My Decision:** Implemented median imputation for features with <40% NULLs, dropped rows for features with >50% NULLs
+
+**Code Files:** `noaa_cleanup_full.py`, `train_test_split.py`
+
+---
+
+### 2. Feature Selection Analysis 
+**Problem:** Initial feature set (V0: 14 features) achieved 4.5°C RMSE, but another group reported 1.5°C  
+**AI Assistance:**
+- Analyzed three feature set versions (V0: 14, V1: 32, V2: 15)
+- Identified data leakage in V1 (lag features + random split)
+- Explained why V2 (adding ceiling_height with 51% NULLs) performed worse
+
+**My Decision:** Used V0 (14 features) as it was legitimate with no data leakage
+
+**Documentation:** `FEATURE_SELECTION_COMPARISON.md`
+
+**Key Learning:** Suspiciously good results often indicate data leakage, not better methodology
+
+---
+
+### 3. Memory Optimization for Training 
+**Problem:** Out-of-memory errors in Dataproc serverless with aggressive hyperparameter grid  
+**AI Assistance:**
+- Suggested reducing hyperparameter combinations from 18 to 4
+- Recommended 2-fold CV instead of 3-fold
+- Proposed sequential training (parallelism=1)
+
+**My Decision:** Created simplified versions (`train_random_forest_simplified.py`, `train_gbt_simplified.py`)
+
+**Result:** Successfully trained on 88M rows without OOM errors
+
+---
+
+### 4. Model Selection 
+**Problem:** Deciding whether to train both RF and GBT on full dataset  
+**AI Assistance:**
+- Analyzed test mode results (RF: 4.64°C vs GBT: 4.93°C)
+- Recommended proceeding with RF only for full training
+- Explained diminishing returns from 10% to 100% sample
+
+**My Decision:** Only ran RF full mode since it outperformed GBT by 5.7% in test mode
+
+**Code Files:** `train_random_forest.py` (test), `train_random_forest_simplified.py` (full)
+
+---
+
+### 5. Pipeline Documentation 
+**AI Assistance:**
+- Helped structure README.md with clear sections
+- Created training guide with step-by-step instructions
+- Organized repository structure
+
+**My Contribution:** Decided content, verified accuracy, made final edits
+
+**Documentation:** `README.md`, `TRAINING_GUIDE.md`, `RESULTS_SUMMARY.md`
+
+---
+
+## What I Did Myself (Without AI)
+
+1. ✅ **Executed all code** - Ran every script on GCP Dataproc, monitored jobs, debugged errors
+2. ✅ **Made key decisions** - Feature selection (V0 over V1/V2), model choice (RF over GBT), hyperparameters
+3. ✅ **Analyzed results** - Interpreted RMSE metrics, feature importance, performance by temperature range
+4. ✅ **Validated approach** - Cross-checked against domain knowledge (professional forecasts: 2-3°C)
+5. ✅ **Critical thinking** - Questioned other group's 1.5°C result, identified data leakage issue
+
+---
+
+## How AI Helped Me Learn
+
+### Concepts Learned:
+- **Data leakage:** How temporal features with random splits create unrealistic results
+- **NULL handling:** Different strategies (drop vs impute) have different tradeoffs
+- **Memory optimization:** Trade-offs between exhaustive search and practical constraints
+- **Distributed ML:** How Spark's parallelism affects memory usage
+
+### Skills Developed:
+- Reading and parsing complex data formats (NOAA ISD)
+- Debugging distributed jobs on cloud infrastructure
+- Designing ML pipelines for big data (130M rows)
+- Making evidence-based decisions (test mode before full training)
+
+---
+
+## Code Ownership Declaration
+
+**I verify that:**
+1. I understand every line of code submitted
+2. I ran and tested all scripts myself
+3. AI provided guidance and suggestions, but I made final decisions
+4. I can explain the methodology and defend the results
+5. All code was executed by me on GCP Dataproc
+
+---
+
+## Appendix: Tools Used
+
+- **AI Assistant:** Claude 3.5 Sonnet (Anthropic)  ChatGPT GPT-5
+- **Platform:** claude.ai
+- **Usage:** Code development, debugging, documentation
+- **Conversation Length:** ~150-200 exchanges over 10 days
+
+---
+
+**Note:** This is a summary. Full conversation logs are available upon request.
+
+**Signature:** ________________  
+**Date:** October 30, 2025
