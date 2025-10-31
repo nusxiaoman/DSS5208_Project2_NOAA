@@ -187,42 +187,65 @@ gcloud config set dataproc/region asia-southeast1
 $env:BUCKET = "weather-ml-bucket-1760514177"
 ```
 ### Complete Pipeline (Recommended Order)
-
 ```powershell
+# Set environment variables
+gcloud config set project distributed-map-475111-h2
+gcloud config set dataproc/region asia-southeast1
+$env:BUCKET = "weather-ml-bucket-1760514177"
+
 # 1. Data Cleanup (45 min) ✓ DONE
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/noaa_cleanup_full.py `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
-    --subnet=default
+    --subnet=default `
+    '--' `
+    gs://$env:BUCKET/data/csv/*.csv `
+    gs://$env:BUCKET/warehouse/noaa_clean_std
 
 # 2. Train/Test Split (20 min) ✓ DONE
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/train_test_split.py `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
-    --subnet=default
+    --subnet=default `
+    '--' `
+    gs://$env:BUCKET/warehouse/noaa_clean_std `
+    gs://$env:BUCKET/warehouse/noaa_train `
+    gs://$env:BUCKET/warehouse/noaa_test
 
 # 3. Baseline Test (10 min) ✓ DONE
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/baseline_model_test.py `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
-    --subnet=default
+    --subnet=default `
+    '--' `
+    gs://$env:BUCKET/warehouse/noaa_train `
+    gs://$env:BUCKET/warehouse/noaa_test `
+    gs://$env:BUCKET/outputs/baseline_test
 
 # 4a. RF Test Mode (10% sample, 35 min) ✓ DONE
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/train_random_forest.py `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
-    --subnet=default
+    --subnet=default `
+    '--' `
+    gs://$env:BUCKET/warehouse/noaa_train `
+    gs://$env:BUCKET/outputs/rf_test `
+    test
 
 # 4b. GBT Test Mode (10% sample, 40 min) ✓ DONE
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/train_gbt.py `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
-    --subnet=default
+    --subnet=default `
+    '--' `
+    gs://$env:BUCKET/warehouse/noaa_train `
+    gs://$env:BUCKET/outputs/gbt_test `
+    test
 
 # Result: RF outperformed GBT → Proceed with RF full training only
 
@@ -253,7 +276,9 @@ gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/compare_models.py `
     --region=asia-southeast1 `
     --deps-bucket=$env:BUCKET `
-    --subnet=default
+    --subnet=default `
+    '--' `
+    gs://$env:BUCKET/outputs
 ```
 
 **Note:** GBT simplified version (`train_gbt_simplified.py`) was prepared but not executed since RF already achieved optimal performance. See [TRAINING_GUIDE.md](TRAINING_GUIDE.md) for detailed instructions and [RESULTS_SUMMARY.md](RESULTS_SUMMARY.md) for complete analysis.
