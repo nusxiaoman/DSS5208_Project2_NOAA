@@ -66,6 +66,15 @@ def parse_precipitation(precip_col):
     )
 
 def main():
+    # Parse command line arguments
+    if len(sys.argv) < 3:
+        print("Usage: noaa_cleanup_full.py <input_path> <output_path>")
+        print("Example: noaa_cleanup_full.py gs://bucket/data/csv/*.csv gs://bucket/warehouse/noaa_clean_std")
+        sys.exit(1)
+    
+    input_path = sys.argv[1]
+    output_path = sys.argv[2]
+    
     # Initialize Spark with optimized settings
     spark = SparkSession.builder \
         .appName("NOAA Data Cleanup - Optimized Full") \
@@ -74,13 +83,11 @@ def main():
         .config("spark.sql.adaptive.skewJoin.enabled", "true") \
         .getOrCreate()
     
-    # Input/output paths
-    input_path = "gs://weather-ml-bucket-1760514177/data/csv/*.csv"
-    output_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_std"
-    
     print("=" * 80)
     print("NOAA Weather Data Cleanup - Optimized Full Dataset")
     print("=" * 80)
+    print(f"Input:  {input_path}")
+    print(f"Output: {output_path}")
     
     # Read raw CSV data
     print(f"\nReading data from: {input_path}")
