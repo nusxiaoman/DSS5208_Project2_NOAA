@@ -8,23 +8,31 @@ from pyspark.sql.functions import col, rand
 import sys
 
 def main():
+    # Parse command line arguments
+    if len(sys.argv) < 4:
+        print("Usage: train_test_split.py <input_path> <train_output> <test_output>")
+        print("Example: train_test_split.py gs://bucket/warehouse/noaa_clean_std gs://bucket/warehouse/noaa_train gs://bucket/warehouse/noaa_test")
+        sys.exit(1)
+    
+    input_path = sys.argv[1]
+    train_output = sys.argv[2]
+    test_output = sys.argv[3]
+    
     # Initialize Spark
     spark = SparkSession.builder \
         .appName("NOAA Train/Test Split") \
         .config("spark.sql.adaptive.enabled", "true") \
         .getOrCreate()
     
-    # Paths
-    input_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_clean_std"
-    train_output = "gs://weather-ml-bucket-1760514177/warehouse/noaa_train"
-    test_output = "gs://weather-ml-bucket-1760514177/warehouse/noaa_test"
-    
     print("=" * 80)
     print("NOAA Weather Data - Train/Test Split")
     print("=" * 80)
+    print(f"Input:        {input_path}")
+    print(f"Train output: {train_output}")
+    print(f"Test output:  {test_output}")
     
     # Read cleaned data
-    print(f"\nReading cleaned data from: {input_path}")
+    print(f"\nReading cleaned data...")
     df = spark.read.parquet(input_path)
     
     total_rows = df.count()
