@@ -12,26 +12,34 @@ from pyspark.sql.functions import col, when
 import sys
 
 def main():
+    # Parse command line arguments
+    if len(sys.argv) < 4:
+        print("Usage: baseline_model_test.py <train_path> <test_path> <output_path>")
+        print("Example: baseline_model_test.py gs://bucket/warehouse/noaa_train gs://bucket/warehouse/noaa_test gs://bucket/outputs/baseline_test")
+        sys.exit(1)
+    
+    train_path = sys.argv[1]
+    test_path = sys.argv[2]
+    output_path = sys.argv[3]
+    
     # Initialize Spark
     spark = SparkSession.builder \
         .appName("NOAA Baseline Model Test") \
         .config("spark.sql.adaptive.enabled", "true") \
         .getOrCreate()
     
-    # Paths
-    train_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_train"
-    test_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_test"
-    output_path = "gs://weather-ml-bucket-1760514177/outputs/baseline_test"
-    
     print("=" * 80)
     print("NOAA Weather Prediction - Baseline Model Test")
     print("=" * 80)
+    print(f"Train path:  {train_path}")
+    print(f"Test path:   {test_path}")
+    print(f"Output path: {output_path}")
     
     # Read data
-    print(f"\nReading training data from: {train_path}")
+    print(f"\nReading training data...")
     train_df = spark.read.parquet(train_path)
     
-    print(f"Reading test data from: {test_path}")
+    print(f"Reading test data...")
     test_df = spark.read.parquet(test_path)
     
     # Sample 10% for quick baseline test
