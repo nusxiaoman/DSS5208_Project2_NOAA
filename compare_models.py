@@ -1,7 +1,6 @@
 """
 Model Comparison Script
 Compares all trained models and generates a summary report
-Updated for actual output structure (rf_simplified, etc.)
 """
 
 from pyspark.sql import SparkSession
@@ -18,6 +17,14 @@ def read_metrics_csv(spark, path):
         return None
 
 def main():
+    # Parse command line arguments
+    if len(sys.argv) < 2:
+        print("Usage: compare_models.py <outputs_base_path>")
+        print("Example: compare_models.py gs://bucket/outputs")
+        sys.exit(1)
+    
+    base_path = sys.argv[1].rstrip("/")
+    
     # Initialize Spark
     spark = SparkSession.builder \
         .appName("NOAA Model Comparison") \
@@ -26,19 +33,18 @@ def main():
     print("=" * 80)
     print("NOAA Weather Prediction - Model Comparison Report")
     print("=" * 80)
+    print(f"Base path: {base_path}")
     
-    bucket = "gs://weather-ml-bucket-1760514177/outputs"
-    
-    # Paths to check (updated for actual structure)
+    # Paths to check
     models = {
-        "Baseline (LR)": f"{bucket}/baseline_test/metrics",
-        "RF Test (10%)": f"{bucket}/rf_test/metrics",
-        "RF Full (Simplified)": f"{bucket}/rf_simplified/metrics",
-        "GBT Test (10%)": f"{bucket}/gbt_test/metrics"
+        "Baseline (LR)": f"{base_path}/baseline_test/metrics",
+        "RF Test (10%)": f"{base_path}/rf_test/metrics",
+        "RF Full (Simplified)": f"{base_path}/rf_simplified/metrics",
+        "GBT Test (10%)": f"{base_path}/gbt_test/metrics"
     }
     
     evaluations = {
-        "RF Full (Simplified)": f"{bucket}/rf_simplified_evaluation/test_metrics"
+        "RF Full (Simplified)": f"{base_path}/rf_simplified_evaluation/test_metrics"
     }
     
     # Collect all metrics
@@ -112,7 +118,7 @@ def main():
         ("RF FULL (SIMPLIFIED)", "rf_simplified"),
         ("GBT TEST (10%)", "gbt_test")
     ]:
-        importance_path = f"{bucket}/{model_path}/feature_importances/*.csv"
+        importance_path = f"{base_path}/{model_path}/feature_importances/*.csv"
         try:
             importance_df = spark.read.csv(importance_path, header=True, inferSchema=True)
             top_features = importance_df.orderBy(col('importance').desc()).limit(5)
