@@ -1,0 +1,43 @@
+@startuml
+title Processing Flow for Model Training
+
+start
+
+:=Setup environment
+* Config Google Cloud
+|_ account, billing
+|_ create project, add necessary services;
+
+:=Ingest Raw Data into GCS
+* copy to data/csv;
+
+:=Extract Data using PySpark
+* follow the document to extract data;
+
+:=Data Cleanup
+* Handle missing values
+* Filter irrelevant data;
+
+:=Data Analysis & EDA
+* Visualizations
+* Statistics;
+
+:=Normalize Data
+* Scaling features;
+
+:=Train ML Model
+* Choose algorithm;
+
+:=Hyper parameter Tuning
+* Grid Search / Random Search;
+
+:=Evaluate Model Performance;
+
+if (Model Satisfactory?) then (yes)
+    :Deploy Model;
+else (no)
+    :Adjust Parameters & Retrain;
+endif
+
+stop
+@enduml

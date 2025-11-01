@@ -49,6 +49,9 @@ This project processes **130 million** hourly weather observations from NOAA's 2
 
 # Quick start
 
+![alt text](docs/training_flow.png)
+
+
 ## Prerequisite 
 - User have to install google-cloud-sdk
 - User have an Google Cloud account
