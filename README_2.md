@@ -47,7 +47,7 @@ This project processes **130 million** hourly weather observations from NOAA's 2
 └── TRAINING_GUIDE.md                          # Step-by-step training instructions
 ```
 
-# Qick start
+# Quick start
 
 ## Prerequisite 
 - User have to install google-cloud-sdk
@@ -60,8 +60,7 @@ export PROJECT_ID="dss5208-noaa-2025"
 export PROJECT_NAME="Weather Temperature Prediction"
 export MY_BUCKET="gs://temperature-ml-2025"
 export BILLING_ACCOUNT_ID="01C917-3E4FE0-F7F748"
-export PYSPARK_VERSION_2="2.2"
-export PYSPARK_VERSION_3="3.0"
+export PYSPARK_VERSION="2.2"
 export PATH_RAW_DATA=$MY_BUCKET/data/csv
 export PATH_CLEANED_DATA=$MY_BUCKET/warehouse/noaa_clean_std
 export PATH_TRAINING_DATA=$MY_BUCKET/warehouse/noaa_train
@@ -74,14 +73,19 @@ export PATH_OUTPUT_RF_SIMPLIFIED=$PATH_OUTPUT/rf_simplified
 export PATH_OUTPUT_RF_SIMPLIFIED_EVALUATION=$PATH_OUTPUT/rf_simplified_evaluation
 ```
 
-The suggestion structure design 
+The suggestion structure design for Bucket
 ```
 ├── data/csv/                     # Raw NOAA CSV files (~50GB)
-├── scripts/
-│   ├── noaa_cleanup_test.py      # Test script (1% sample)
-│   └── noaa_cleanup_full.py      # Full dataset processing
+├── scripts/                      # keep script to run batch
+├── outputs/
+│   ├── baseline_test/            # keep baseline training result
+│   ├── rf_simplified_evaluation/ # keep eveluation data
+│   ├── rf_simplified/            # keep random forest simplfied training result
+│   ├── rf_test/                  # keep random forest training result
+│   └── gbt_test/                 # keep GBT training result
 └── warehouse/
-    ├── noaa_parquet/             # Raw parquet (from ETL)
+    ├── noaa_train/               # Raw train parquet (from ETL)
+    ├── noaa_test/                # Raw test parquet (from ETL)
     └── noaa_clean_std/           # Cleaned data (output)
 ```
 
@@ -160,7 +164,7 @@ gcloud dataproc batches submit pyspark \
     $MY_BUCKET/scripts/noaa_cleanup_full.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=01-cleanup-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_2 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_RAW_DATA \
     $PATH_CLEANED_DATA
@@ -179,7 +183,7 @@ gcloud dataproc batches submit pyspark \
     $MY_BUCKET/scripts/train_test_split.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=02-split-data-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_3 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_CLEANED_DATA \
     $PATH_TRAINING_DATA \
@@ -192,7 +196,7 @@ gcloud dataproc batches submit pyspark \
     $MY_BUCKET/scripts/baseline_model_test.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=03-baseline-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_2 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_TRAINING_DATA \
     $PATH_TEST_DATA \
@@ -207,7 +211,7 @@ gcloud dataproc batches submit pyspark \
      $MY_BUCKET/scripts/train_gbt.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=041-gbt-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_2 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_TRAINING_DATA \
     $PATH_OUTPUT_GBT \
@@ -222,7 +226,7 @@ gcloud dataproc batches submit pyspark \
      $MY_BUCKET/scripts/train_random_forest.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=051-random-forest-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_2 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_TRAINING_DATA \
     $PATH_OUTPUT_RF \
@@ -236,7 +240,7 @@ gcloud dataproc batches submit pyspark \
      $MY_BUCKET/scripts/train_random_forest_simplified.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=052-rf-simplified-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_2 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_TRAINING_DATA \
     $PATH_OUTPUT_RF_SIMPLIFIED \
@@ -249,7 +253,7 @@ gcloud dataproc batches submit pyspark \
     $MY_BUCKET/scripts/evaluate_model.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=06-evaluation-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_2 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_OUTPUT_RF_SIMPLIFIED/best_RandomForest_model \
     $PATH_TEST_DATA \
@@ -263,7 +267,7 @@ gcloud dataproc batches submit pyspark \
     $MY_BUCKET/scripts/compare_models.py \
     --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
     --subnet=default --batch=07-compare-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION_2 --async \
+    --version=$PYSPARK_VERSION --async \
     '--' \
     $PATH_OUTPUT
 ```
