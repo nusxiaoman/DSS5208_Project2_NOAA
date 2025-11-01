@@ -31,12 +31,12 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=$env:BUCKET `
     --subnet=default `
     '--' `
-    gs://$env:BUCKET/data/csv/*.csv `
+    gs://$env:BUCKET/data/csv `
     gs://$env:BUCKET/warehouse/noaa_clean_std
 ```
 
 **Arguments:**
-- Input: `gs://$env:BUCKET/data/csv/*.csv`
+- Input: `gs://$env:BUCKET/data/csv`
 - Output: `gs://$env:BUCKET/warehouse/noaa_clean_std`
 
 ---
@@ -315,7 +315,7 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=$env:BUCKET `
     --subnet=default `
     '--' `
-    gs://$env:BUCKET/data/test_sample/*.csv `
+    gs://$env:BUCKET/data/test_sample `
     gs://$env:BUCKET/warehouse/test_output
 ```
 
@@ -342,7 +342,7 @@ $env:BUCKET = "weather-ml-bucket-1760514177"
 gcloud dataproc batches submit pyspark `
     gs://$env:BUCKET/scripts/noaa_cleanup_full.py `
     --region=asia-southeast1 --deps-bucket=$env:BUCKET --subnet=default `
-    '--' gs://$env:BUCKET/data/csv/*.csv gs://$env:BUCKET/warehouse/noaa_clean_std
+    '--' gs://$env:BUCKET/data/csv gs://$env:BUCKET/warehouse/noaa_clean_std
 
 # ==================== STEP 2: SPLIT ====================
 gcloud dataproc batches submit pyspark `

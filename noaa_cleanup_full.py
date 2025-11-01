@@ -69,7 +69,7 @@ def main():
     # Parse command line arguments
     if len(sys.argv) < 3:
         print("Usage: noaa_cleanup_full.py <input_path> <output_path>")
-        print("Example: noaa_cleanup_full.py gs://bucket/data/csv/*.csv gs://bucket/warehouse/noaa_clean_std")
+        print("Example: noaa_cleanup_full.py gs://bucket/data/csv gs://bucket/warehouse/noaa_clean_std")
         sys.exit(1)
     
     input_path = sys.argv[1]
@@ -91,7 +91,7 @@ def main():
     
     # Read raw CSV data
     print(f"\nReading data from: {input_path}")
-    df = spark.read.csv(input_path, header=True, inferSchema=False)
+    df = spark.read.csv(input_path, header=True, inferSchema=False, pathGlobFilter='*.csv')
     
     # Get initial count (this is cached by Spark)
     total_rows = df.count()
