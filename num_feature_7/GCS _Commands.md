@@ -74,7 +74,7 @@ gcloud dataproc batches submit pyspark \
   --deps-bucket=weather-ml-bucket-1760514177 \
   --subnet=default \
   -- \
-  gs://weather-ml-bucket-1760514177/data/csv/*.csv \
+  gs://weather-ml-bucket-1760514177/data/csv \
   gs://weather-ml-bucket-1760514177/warehouse/noaa_parquet
 ```
 
@@ -130,7 +130,7 @@ Please include this table in the submission:
 
 | Step | Script            | Input                    | Output                     | Mode       | Command         |
 | ---- | ----------------- | ------------------------ | -------------------------- | ---------- | --------------- |
-| 1    | `noaa_etl.py`     | `data/csv/*.csv`         | `warehouse/noaa_parquet`   | Serverless | ETL Command     |
+| 1    | `noaa_etl.py`     | `data/csv`         | `warehouse/noaa_parquet`   | Serverless | ETL Command     |
 | 2    | `noaa_cleanup.py` | `warehouse/noaa_parquet` | `warehouse/noaa_clean_std` | Serverless | Cleanup Command |
 
 
@@ -445,7 +445,7 @@ Or in the console:
 
 | Step | Script              | Input                      | Output                         | Mode      | Runner                                    |
 | ---- | ------------------- | -------------------------- | ------------------------------ | --------- | ----------------------------------------- |
-| 1️⃣  | `noaa_etl.py`       | `data/csv/*.csv`           | `warehouse/noaa_parquet`       | ETL       | **Dataproc Serverless (Data Processing)** |
+| 1️⃣  | `noaa_etl.py`       | `data/csv`           | `warehouse/noaa_parquet`       | ETL       | **Dataproc Serverless (Data Processing)** |
 | 2️⃣  | `noaa_cleanup.py`   | `warehouse/noaa_parquet`   | `warehouse/noaa_clean_std`     | Cleanup   | **Dataproc Serverless (Data Processing)** |
 | 3️⃣  | `noaa_train_rf.py`  | `warehouse/noaa_clean_std` | `outputs/rf_small`             | RF-small  | **Dataproc Serverless (Spark ML)**        |
 | 4️⃣  | `noaa_train_rf.py`  | `warehouse/noaa_clean_std` | `outputs/rf_cluster`           | RF-full   | **Dataproc Cluster (Batch Spark)**        |

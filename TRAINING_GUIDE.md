@@ -268,7 +268,7 @@ gsutil ls gs://$env:BUCKET/outputs/rf_simplified/
 
 | Purpose | Path |
 |---------|------|
-| **Raw Data** | `gs://$env:BUCKET/data/csv/*.csv` |
+| **Raw Data** | `gs://$env:BUCKET/data/csv` |
 | **Cleaned Data** | `gs://$env:BUCKET/warehouse/noaa_clean_std` |
 | **Training Set** | `gs://$env:BUCKET/warehouse/noaa_train` |
 | **Test Set** | `gs://$env:BUCKET/warehouse/noaa_test` |

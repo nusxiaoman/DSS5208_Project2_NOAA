@@ -200,7 +200,7 @@ gcloud dataproc batches submit pyspark `
     --deps-bucket=$env:BUCKET `
     --subnet=default `
     '--' `
-    gs://$env:BUCKET/data/csv/*.csv `
+    gs://$env:BUCKET/data/csv `
     gs://$env:BUCKET/warehouse/noaa_clean_std
 
 # 2. Train/Test Split (20 min) ✓ DONE

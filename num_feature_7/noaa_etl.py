@@ -7,7 +7,7 @@ Usage:
   noaa_etl.py <INPUT_CSV_GLOB> <OUTPUT_PARQUET_BASE>
 
 Examples:
-  noaa_etl.py gs://YOUR_BUCKET/data/csv/*.csv gs://YOUR_BUCKET/warehouse/noaa_parquet
+  noaa_etl.py gs://YOUR_BUCKET/data/csv gs://YOUR_BUCKET/warehouse/noaa_parquet
 """
 
 if len(sys.argv) != 3:
@@ -29,7 +29,7 @@ spark.sparkContext.setLogLevel("WARN")
 df = (spark.read
       .option("header", True)
       .option("mode", "DROPMALFORMED")
-      .csv(INPUT))
+      .csv(INPUT, pathGlobFilter='*.csv'))
 
 # ---- helpers to parse NOAA fields ----
 @F.udf(T.DoubleType())

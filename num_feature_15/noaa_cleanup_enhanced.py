@@ -63,7 +63,7 @@ def main():
         .getOrCreate()
     
     # Paths
-    input_path = "gs://weather-ml-bucket-1760514177/data/csv/*.csv"
+    input_path = "gs://weather-ml-bucket-1760514177/data/csv"
     output_path = "gs://weather-ml-bucket-1760514177/warehouse/noaa_cleaned_v2"
     
     print("=" * 80)
@@ -76,7 +76,7 @@ def main():
     
     # Read data
     print(f"\nReading: {input_path}")
-    df = spark.read.csv(input_path, header=True, inferSchema=False)
+    df = spark.read.csv(input_path, header=True, inferSchema=False, pathGlobFilter='*.csv')
     
     total_rows = df.count()
     print(f"Total rows: {total_rows:,}")
