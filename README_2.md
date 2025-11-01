@@ -20,7 +20,30 @@ This project processes **130 million** hourly weather observations from NOAA's 2
 ---
 ## 🗂️ Repository Structure
 
-- [Repository Structure](docs/REPO_STRUCTURE.md)
+```
+├── README.md                                  # Project overview and quick start
+├── FEATURE_SELECTION_COMPARISON.md            # Feature engineering analysis (V0/V1/V2)
+├── QUICK_REFERENCE.md                         # Command reference guide
+├── RESULTS_SUMMARY.md                         # Complete results and analysis
+├── docs                                       # Reference documentation
+│   ├── AI Communication.txt
+│   ├── TRAINING_GUIDE.md                      # Step-by-step training instructions for Windown
+│   ├── TRAINING_GUIDE_LINUX.md                # Step-by-step training instructions for Linux/Mac
+│   ├── DATA_CLEANUP_README.md                 # Data cleaning documentation
+│   └── MLlib.pdf
+├── experiments                                # Experimental scripts (not in pipeline)
+│   └── script_for_trial
+├── src
+│   ├── baseline_model_test.py                 # Linear Regression baseline (10 min)
+│   ├── compare_models.py                      # Model comparison (5 min)
+│   ├── evaluate_model.py                      # Test set evaluation (15 min)
+│   ├── noaa_cleanup_full.py                   # Data cleaning (45 min)
+│   ├── train_gbt_simplified.py                # GBT training (1.2 hrs)
+│   ├── train_random_forest_simplified.py      # RF training (1.2 hrs) ✓ BEST
+│   ├── train_test_split.py                    # 70/30 split (20 min)
+│   ├── train_gbt.py                           # GBT original version
+│   └── train_random_forest.py                 # RF original version
+```
 
 ## 🗂️ Google Cloud Storage (GCS) Structure
 
@@ -28,8 +51,8 @@ This project processes **130 million** hourly weather observations from NOAA's 2
 
 # TRAINING GUIDE - Complete Updated Commands
 
-- [Quick Start for Windown with PowerShell](TRAINING_GUIDE.md)
-- [Quick Start for Linux and Macbook](docs/QuickStartForLinux.md)
+- [Quick Start for Windown with PowerShell](docs/TRAINING_GUIDE.md)
+- [Quick Start for Linux and Macbook](docs/TRAINING_GUIDE_LINUX.md)
 
 
 ---
@@ -48,6 +71,7 @@ This project processes **130 million** hourly weather observations from NOAA's 2
 | Training set | 88,228,998 rows (70%) |
 | Test set | 37,806,279 rows (30%) |
 
+- [Guideline for data cleanup](docs/DATA_CLEANUP_README.md)
 
 ### Features (14 Total)
 
