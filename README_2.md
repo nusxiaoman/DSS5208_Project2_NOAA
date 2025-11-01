@@ -18,259 +18,181 @@ This project processes **130 million** hourly weather observations from NOAA's 2
 - ✅ **Best test RMSE: 4.65°C, R² = 0.85** (16.4% improvement over baseline)
 
 ---
-
 ## 🗂️ Repository Structure
 
-```
-├── DATA_CLEANUP_README.md                     # Data cleaning documentation
-├── docs                                       # Reference documentation
-│   ├── AI Communication.txt
-│   └── MLlib.pdf
-├── experiments                                # Experimental scripts (not in pipeline)
-│   ├── num_feature_15
-│   ├── num_feature_7
-│   └── script_for_trial
-├── FEATURE_SELECTION_COMPARISON.md            # Feature engineering analysis (V0/V1/V2)
-├── QUICK_REFERENCE.md                         # Command reference guide
-├── README.md                                  # Project overview and quick start
-├── RESULTS_SUMMARY.md                         # Complete results and analysis
-├── src
-│   ├── baseline_model_test.py                 # Linear Regression baseline (10 min)
-│   ├── compare_models.py                      # Model comparison (5 min)
-│   ├── evaluate_model.py                      # Test set evaluation (15 min)
-│   ├── noaa_cleanup_full.py                   # Data cleaning (45 min)
-│   ├── train_gbt_simplified.py                # GBT training (1.2 hrs)
-│   ├── train_random_forest_simplified.py      # RF training (1.2 hrs) ✓ BEST
-│   ├── train_test_split.py                    # 70/30 split (20 min)
-│   ├── train_gbt.py                           # GBT original version
-│   └── train_random_forest.py                 # RF original version
-└── TRAINING_GUIDE.md                          # Step-by-step training instructions
-```
+- [Repository Structure](docs/REPO_STRUCTURE.md)
 
-# Quick start
+## 🗂️ Google Cloud Storage (GCS) Structure
 
-![alt text](docs/training_flow.png)
+- [view Data Structure](docs/DATA_STRUCTURE.md)
+
+# TRAINING GUIDE - Complete Updated Commands
+
+- [Quick Start for Windown with PowerShell](TRAINING_GUIDE.md)
+- [Quick Start for Linux and Macbook](docs/QuickStartForLinux.md)
 
 
-## Prerequisite 
-- User have to install google-cloud-sdk
-- User have an Google Cloud account
+---
 
-### 1) Config parameter for your project
-```shell
-export DEFAULT_REGION="asia-southeast1"
-export PROJECT_ID="dss5208-noaa-2025"
-export PROJECT_NAME="Weather Temperature Prediction"
-export MY_BUCKET="gs://temperature-ml-2025"
-export BILLING_ACCOUNT_ID="01C917-3E4FE0-F7F748"
-export PYSPARK_VERSION="2.2"
-export PATH_RAW_DATA=$MY_BUCKET/data/csv
-export PATH_CLEANED_DATA=$MY_BUCKET/warehouse/noaa_clean_std
-export PATH_TRAINING_DATA=$MY_BUCKET/warehouse/noaa_train
-export PATH_TEST_DATA=$MY_BUCKET/warehouse/noaa_test
-export PATH_OUTPUT=$MY_BUCKET/outputs
-export PATH_OUTPUT_BASELINE=$PATH_OUTPUT/baseline_test
-export PATH_OUTPUT_GBT=$PATH_OUTPUT/gbt_test
-export PATH_OUTPUT_RF=$PATH_OUTPUT/rf_test
-export PATH_OUTPUT_RF_SIMPLIFIED=$PATH_OUTPUT/rf_simplified
-export PATH_OUTPUT_RF_SIMPLIFIED_EVALUATION=$PATH_OUTPUT/rf_simplified_evaluation
-```
+## 📊 Dataset
 
-The suggestion structure design for Bucket
-```
-├── data/csv/                     # Raw NOAA CSV files (~50GB)
-├── scripts/                      # keep script to run batch
-├── outputs/
-│   ├── baseline_test/            # keep baseline training result
-│   ├── rf_simplified_evaluation/ # keep eveluation data
-│   ├── rf_simplified/            # keep random forest simplfied training result
-│   ├── rf_test/                  # keep random forest training result
-│   └── gbt_test/                 # keep GBT training result
-└── warehouse/
-    ├── noaa_train/               # Raw train parquet (from ETL)
-    ├── noaa_test/                # Raw test parquet (from ETL)
-    └── noaa_clean_std/           # Cleaned data (output)
-```
+**Source**: NOAA Global Hourly Surface Weather Observations (2024)  
+**URL**: https://www.ncei.noaa.gov/data/global-hourly/
 
-### 2) config the region for your project
-```shell
-gcloud config set compute/region $DEFAULT_REGION
-```
-
-### 3) Create a new project
-```shell
-gcloud projects create $PROJECT_ID --name="$PROJECT_NAME"
-gcloud config set project $PROJECT_ID
-```
-
-### 4) check your current config
-```shell
-gcloud config list
-```
-
-### 5) check your current billing account and link to the project
-```shell
-gcloud beta billing accounts list
-gcloud beta billing projects link $PROJECT_ID --billing-account $BILLING_ACCOUNT_ID
-```
-
-### 6) Create a new bucket to storage data and verify the permission
-```shell
-gsutil mb -l $DEFAULT_REGION -p $PROJECT_ID $MY_BUCKET
-
-gsutil iam get $MY_BUCKET
-```
-
-### 6) copy the raw data to storage (Follow the structure)
-```shell
-# cd /to/your/path
-gsutil -m cp -r . $MY_BUCKET/data/csv
-```
-
-### 7) verify the data in storage with number of file and first 5 file by name
-```shell
-gsutil ls $MY_BUCKET/data/csv | wc -l
-
-gsutil ls $MY_BUCKET/data/csv | head -n 5
-```
-
-### 8) copy script from the repository
-```shell
-# cd /to/your/repository
-gsutil -m cp -r src/* $MY_BUCKET/scripts/
-
-gsutil ls $MY_BUCKET/scripts/ | head -n 10
------
-.../scripts/baseline_model_test.py
-.../scripts/compare_models.py
-.../scripts/evaluate_model.py
-.../scripts/noaa_cleanup_full.py
-.../scripts/train_gbt.py
-.../scripts/train_random_forest.py
-.../scripts/train_random_forest_simplified.py
-.../scripts/train_test_split.py
-```
-
-### 9) enable dataproc for current project and verify (it will take few minutes)
-```shell
-gcloud services enable dataproc.googleapis.com --project $PROJECT_ID
-
-gcloud services list --project $PROJECT_ID --enabled
-
-```
-
-gcloud services list --project $PROJECT_ID --filter="config.name=dataproc.googleapis.com"
-
-### 9) run cleanup script with ASYC mode
-```shell
-gcloud dataproc batches submit pyspark \
-    $MY_BUCKET/scripts/noaa_cleanup_full.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=01-cleanup-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_RAW_DATA \
-    $PATH_CLEANED_DATA
-
-# Note the job id to check and verify 
-Batch [01-cleanup-job-20251031-234134] submitted.
-...
-
-# you can check the output log on whe website
-https://console.cloud.google.com/dataproc/batches?cloudshell=true&project=[CHANGE_TO_YOUR_PROJECT_ID]
-```
-
-### 10) run split script (make sure the previous step  is successful)
-```shell
-gcloud dataproc batches submit pyspark \
-    $MY_BUCKET/scripts/train_test_split.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=02-split-data-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_CLEANED_DATA \
-    $PATH_TRAINING_DATA \
-    $PATH_TEST_DATA
-```
-
-### 11) run baseline training script (make sure the previous step  is successful)
-```shell
-gcloud dataproc batches submit pyspark \
-    $MY_BUCKET/scripts/baseline_model_test.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=03-baseline-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_TRAINING_DATA \
-    $PATH_TEST_DATA \
-    $PATH_OUTPUT_BASELINE
-```
+| Metric | Value |
+|--------|-------|
+| Original rows | 130,222,106 |
+| Original size | ~50GB (CSV) |
+| After cleaning | 126,035,277 rows (96.78% retained) |
+| Cleaned size | 111MB (Parquet) |
+| Training set | 88,228,998 rows (70%) |
+| Test set | 37,806,279 rows (30%) |
 
 
-### 11) run GBT training script (make sure the previous step  is successful)
-```shell
-# run with mode: full or test (training with 10% data)
-gcloud dataproc batches submit pyspark \
-     $MY_BUCKET/scripts/train_gbt.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=041-gbt-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_TRAINING_DATA \
-    $PATH_OUTPUT_GBT \
-    test
-```
+### Features (14 Total)
+
+**Geographic** (3): latitude, longitude, elevation  
+**Weather** (7): dew_point, sea_level_pressure, visibility, wind_speed, wind_dir_sin/cos, precipitation  
+**Temporal** (4): hour_sin/cos, month_sin/cos (cyclical encoding)  
+**Target**: temperature (°C)
+
+### Feature Selection
+
+These 14 features represent **all essential, available meteorological information** from the NOAA dataset. We explored alternative feature sets:
+
+- **V1**: 32 features with temporal lag features (temp_lag_1h, etc.) - showed data leakage with random split (0.46°C RMSE, unrealistic)
+- **V2**: 15 features adding ceiling_height - performed worse (6.85°C) due to 51% NULL values
+
+**Key findings:**
+- Additional available fields (cloud cover, weather observations, wind gust) have 50-100% NULL rates
+- Our 14-feature baseline captures all usable information without data leakage
+- More features ≠ better performance when they add noise rather than signal
+
+**See [FEATURE_SELECTION_COMPARISON.md](FEATURE_SELECTION_COMPARISON.md) for detailed analysis of alternative feature sets and data leakage discussion.**
+
+---
+
+## 🤖 Models & Results
+
+### Final Model Comparison
+
+| Model | Train RMSE | Test RMSE | Test R² | Training Time |
+|-------|------------|-----------|---------|---------------|
+| **Baseline (LR)** | 5.56°C | 5.56°C | 0.8017 | ~10 min |
+| **RF Test (10%)** | 4.64°C | N/A | 0.8525 | ~35 min |
+| **RF Full (100%)** ⭐ | **4.65°C** | **4.65°C** | **0.8519** | **1.2 hrs** |
+| **GBT Test (10%)** | 4.93°C | N/A | 0.8341 | ~40 min |
+
+### Best Model: Random Forest (Simplified)
+
+**Test Performance:**
+- **RMSE**: 4.65°C ✓
+- **R²**: 0.8519 (explains 85% of variance) ✓
+- **MAE**: 3.42°C ✓
+- **Improvement**: 16.4% better than baseline
+
+**Configuration:**
+- Parameters: numTrees=20, maxDepth=10
+- Cross-validation: 2-fold
+- Training: 88,228,998 rows
+- Perfect generalization: Training RMSE = Test RMSE (no overfitting)
+
+**Top 5 Features:**
+1. **dew_point** (38.4%) - Most critical predictor
+2. **latitude** (26.7%) - Geographic climate zones
+3. **month_cos** (17.3%) - Seasonal patterns
+4. **month_sin** (6.6%) - Seasonal patterns
+5. **longitude** (3.8%) - East-west variation
+
+---
+
+## 🎯 Key Findings
+
+### 1. Perfect Generalization
+Training RMSE (4.65°C) = Test RMSE (4.65°C) → No overfitting ✓
+
+### 2. Diminishing Returns
+- RF Test (10% data): 4.64°C
+- RF Full (100% data): 4.65°C
+- **Difference**: 0.007°C (0.2% change)
+
+Using 10× more data improved RMSE by less than 1%, showing the model already captured main patterns from the 10% sample.
+
+### 3. RF > GBT
+Random Forest outperformed Gradient Boosted Trees by 5.7% (4.64°C vs 4.93°C in test mode).
+
+### 4. Performance by Temperature
+
+| Temperature Range | Count | MAE | Quality |
+|-------------------|-------|-----|---------|
+| 10-20°C | 11.6M (31%) | 2.96°C | ⭐⭐⭐ Excellent |
+| 20-30°C | 10.2M (27%) | 2.93°C | ⭐⭐⭐ Excellent |
+| 0-10°C | 8.9M (24%) | 2.91°C | ⭐⭐⭐ Excellent |
+| Below 0°C | 4.5M (12%) | 4.88°C | ⭐⭐ Good |
+| Above 30°C | 2.5M (7%) | 6.72°C | ⭐ Challenging |
+
+Model excels in moderate temperatures (0-30°C) covering 81% of data.
+
+---
+
+## 💻 Computing Environment
+
+**Platform**: Google Cloud Dataproc Serverless  
+**Region**: asia-southeast1  
+**Spark Version**: 2.2.61  
+**Resources**: 4-core executors, 9.6GB memory, dynamic allocation
+
+**Total Project Time**: ~3 hours compute time
+
+---
+
+## 📈 Technical Highlights
+
+### Data Processing
+- **Missing values**: Median imputation (robust to outliers)
+- **Cyclical encoding**: sin/cos for hour, month, wind direction (preserves circular continuity)
+- **Quality filters**: Physical constraints (temp: -90 to +60°C, pressure: 950-1050 hPa)
+- **Compression**: Parquet format (99.8% size reduction)
+
+### Model Optimization
+- **Memory-optimized hyperparameters**: 4 models instead of 18, preventing OOM errors
+- **2-fold CV**: Reduced from 3-fold for memory efficiency
+- **Sequential training**: Parallelism=1 for stability
+- **Conservative parameters**: maxDepth=10, numTrees=20 (proven in test mode)
+
+### Key Learnings
+- Smart sampling (10%) achieves near-optimal results with 90% less compute
+- Memory optimization > aggressive hyperparameter tuning
+- Conservative parameters with proper validation > exhaustive grid search
+- Feature engineering (cyclical encoding) crucial for temporal patterns
 
 
-### 12) run RF training script (make sure the previous step  is successful)
-```shell
-# run with mode: full or test (training with 10% data)
-gcloud dataproc batches submit pyspark \
-     $MY_BUCKET/scripts/train_random_forest.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=051-random-forest-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_TRAINING_DATA \
-    $PATH_OUTPUT_RF \
-    test
-```
 
-### 13) run RF simplified training script (make sure the previous step  is successful)
-```shell
-# run with mode: full or test (training with 10% data)
-gcloud dataproc batches submit pyspark \
-     $MY_BUCKET/scripts/train_random_forest_simplified.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=052-rf-simplified-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_TRAINING_DATA \
-    $PATH_OUTPUT_RF_SIMPLIFIED \
-    test
-```
+---
 
-### 14) Evaluate RF on Test Set
-```shell
-gcloud dataproc batches submit pyspark \
-    $MY_BUCKET/scripts/evaluate_model.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=06-evaluation-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_OUTPUT_RF_SIMPLIFIED/best_RandomForest_model \
-    $PATH_TEST_DATA \
-    $PATH_OUTPUT_RF_SIMPLIFIED_EVALUATION
-```
+## 🎓 Learning Outcomes
 
+This project demonstrates:
+- ✅ Large-scale data processing with Apache Spark (130M rows)
+- ✅ Distributed machine learning on cloud infrastructure (GCP Dataproc)
+- ✅ Feature engineering for weather data (cyclical encoding, imputation)
+- ✅ Hyperparameter tuning with cross-validation
+- ✅ Production ML pipeline development (data → training → evaluation)
+- ✅ Memory optimization for big data workloads
+- ✅ Model evaluation and comparison on held-out test sets
 
-### 15) run baseline training script (make sure the previous step  is successful)
-```shell
-gcloud dataproc batches submit pyspark \
-    $MY_BUCKET/scripts/compare_models.py \
-    --region=$DEFAULT_REGION --deps-bucket=$MY_BUCKET \
-    --subnet=default --batch=07-compare-job-$(date +"%Y%m%d-%H%M%S") \
-    --version=$PYSPARK_VERSION --async \
-    '--' \
-    $PATH_OUTPUT
-```
+---
+
+## 🔗 References
+
+1. NOAA Global Hourly Dataset: https://www.ncei.noaa.gov/data/global-hourly/
+2. Documentation: https://www.ncei.noaa.gov/data/global-hourly/doc/
+3. Google Cloud Dataproc: https://cloud.google.com/dataproc/docs
+4. Apache Spark MLlib: https://spark.apache.org/docs/latest/ml-guide.html
+
+---
+
+**Project Complete!** 🎉  
+**Last Updated**: October 26, 2024  
+**Version**: 2.0 - Final  
+**Course**: DSS5208 - Scalable Distributed Computing for Data Science
