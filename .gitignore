@@ -24,4 +24,26 @@ Thumbs.db
 # Ignore old/failed/archive files
 old_files/
 
+
+# VS Code files
+.vscode/
+
+# MacOS files
+.DS_Store
+
+# Windows files
+Thumbs.db
+ehthumbs.db
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
 local/
+data/
+tmp/
