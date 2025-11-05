@@ -1,7 +1,7 @@
 # NOAA Weather Prediction - Results Summary
 ## DSS5208 Project 2: Machine Learning on Weather Data
 
-**Date**: October 25, 2024  
+**Date**: Nov 05, 2024  
 **Course**: DSS5208
 
 ---
@@ -431,7 +431,7 @@ Model excels in moderate temperatures (0-30°C) covering 81% of test data, with 
 ---
 
 **Submitted**: November 5, 2024  
-**Course**: DSS5208 - Distributed Systems and Big Data  
+**Course**: DSS5208 Scalable Distributed Computing for Data Science  
 **Project**: Machine Learning on Weather Data
 
 ---
