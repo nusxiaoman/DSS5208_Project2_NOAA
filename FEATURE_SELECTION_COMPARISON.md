@@ -16,7 +16,7 @@
 
 ## Version Details
 
-### V0 - Your Working Version ✅
+### V0 - Selected Working Version ✅
 
 **Features (14):**
 - Geographic: latitude, longitude, elevation (3)
@@ -33,7 +33,7 @@
 - **RF: 4.5°C** ✅
 - **62% better than naive baseline (~12°C)**
 
-**Status:** ✅ **LEGITIMATE and GOOD** - Use this for your report!
+**Status:** ✅ **LEGITIMATE and GOOD** 
 
 ---
 
@@ -156,7 +156,6 @@ Timeline with random split:
 1. **Better than professionals:** 0.46°C < 2-3°C (impossible!)
 2. **R² = 0.9986:** Explains 99.86% of variance (unrealistic)
 3. **Lag + random split = leakage:** Classic data leakage pattern
-4. **Same as other group:** They got 1.5°C (also leakage)
 
 **Evidence:** In proper time-based split, V1 would likely get 3.5-4.0°C, not 0.46°C
 
@@ -177,42 +176,3 @@ Timeline with random split:
 - Accept unrealistic results without investigation
 
 ---
-
-## Recommendation for Your Report
-
-### Use V0 Results ✅
-
-**Why:**
-- Legitimate methodology (no leakage)
-- Good performance (4.5°C)
-- Easy to defend
-- Demonstrates proper ML practice
-
-**Report Structure:**
-1. **Methods:** V0 features and approach
-2. **Results:** 4.5°C RF (62% better than naive)
-3. **Discussion:** Why 4.5°C is good performance
-4. **Analysis:** V1 shows data leakage example
-5. **Critique:** Other group's 1.5°C likely has same issue
-
----
-
-## Summary
-
-**Your V0 RF: 4.5°C RMSE**
-- ✅ Legitimate
-- ✅ Good performance
-- ✅ No data leakage
-- ✅ **Submit this!**
-
-**V1: 0.46°C **
-- ❌ Data leakage
-- ❌ Unrealistic
-- ❌ Lag features + random split
-- ❌ Won't work in deployment
-
-**Bottom Line:** Suspiciously good results usually mean something's wrong. Your honest 4.5°C is what good ML looks like! 🎯
-
----
-
-*Use V0 for your final submission!*
